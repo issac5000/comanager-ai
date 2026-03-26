@@ -12,7 +12,10 @@ export default function HomePage() {
               <Button variant="ghost">Se connecter</Button>
             </Link>
             <Link href="/register">
-              <Button>Commencer gratuitement</Button>
+              <Button>
+                <span className="sm:hidden">Commencer</span>
+                <span className="hidden sm:inline">Commencer gratuitement</span>
+              </Button>
             </Link>
           </div>
         </div>

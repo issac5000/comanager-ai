@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Send, Copy, Download, Check } from "lucide-react";
 
 type Post = {
   id: string;
@@ -20,27 +20,33 @@ type Post = {
   post_types: { name: string; slug: string } | null;
 };
 
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  generating: { label: "Génération...", variant: "secondary" },
-  pending_review: { label: "À valider", variant: "default" },
-  approved: { label: "Approuvé", variant: "outline" },
-  published: { label: "Publié", variant: "default" },
-  rejected: { label: "Rejeté", variant: "destructive" },
-  failed: { label: "Échoué", variant: "destructive" },
+const STATUS_LABELS: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  generating: { label: "G\u00e9n\u00e9ration...", variant: "secondary" },
+  pending_review: { label: "\u00c0 valider", variant: "default" },
+  approved: { label: "Approuv\u00e9", variant: "outline" },
+  published: { label: "Publi\u00e9", variant: "default" },
+  rejected: { label: "Rejet\u00e9", variant: "destructive" },
+  failed: { label: "\u00c9chou\u00e9", variant: "destructive" },
 };
 
 const FILTERS = [
   { value: "all", label: "Tous" },
-  { value: "pending_review", label: "À valider" },
-  { value: "approved", label: "Approuvés" },
-  { value: "published", label: "Publiés" },
-  { value: "rejected", label: "Rejetés" },
+  { value: "pending_review", label: "\u00c0 valider" },
+  { value: "approved", label: "Approuv\u00e9s" },
+  { value: "published", label: "Publi\u00e9s" },
+  { value: "rejected", label: "Rejet\u00e9s" },
 ];
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [filter, setFilter] = useState("all");
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [hasConnectedAccounts, setHasConnectedAccounts] = useState(false);
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const supabase = createClient();
 
   const loadPosts = useCallback(async () => {
@@ -73,7 +79,17 @@ export default function PostsPage() {
         .limit(1)
         .single();
 
-      if (membership) setOrgId(membership.org_id);
+      if (membership?.org_id) {
+        setOrgId(membership.org_id);
+
+        // Check if there are connected accounts
+        const { count } = await supabase
+          .from("connected_accounts")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", membership.org_id);
+
+        setHasConnectedAccounts((count ?? 0) > 0);
+      }
     }
     init();
   }, [supabase]);
@@ -98,21 +114,70 @@ export default function PostsPage() {
     loadPosts();
   }
 
+  async function handlePublish(postId: string) {
+    setPublishing(postId);
+    try {
+      const res = await fetch("/api/meta/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post_id: postId }),
+      });
+      if (res.ok) {
+        loadPosts();
+      }
+    } finally {
+      setPublishing(null);
+    }
+  }
+
+  function handleCopyCaption(post: Post) {
+    const text = [
+      post.caption || "",
+      post.hashtags?.map((h) => `#${h}`).join(" ") || "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    navigator.clipboard.writeText(text);
+    setCopied(post.id);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleDownloadImage(post: Post) {
+    if (!post.generated_image_url) return;
+    try {
+      const res = await fetch(post.generated_image_url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `post-${post.id}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: open in new tab
+      window.open(post.generated_image_url, "_blank");
+    }
+  }
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Publications</h1>
         <p className="text-muted-foreground">
-          Gérez et validez vos posts générés par l&apos;IA
+          G&eacute;rez et validez vos posts g&eacute;n&eacute;r&eacute;s par l&apos;IA
         </p>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {FILTERS.map((f) => (
           <Button
             key={f.value}
             variant={filter === f.value ? "default" : "outline"}
             size="sm"
+            className="shrink-0"
             onClick={() => setFilter(f.value)}
           >
             {f.label}
@@ -126,7 +191,7 @@ export default function PostsPage() {
           <h3 className="font-semibold text-lg mb-2">Aucun post</h3>
           <p className="text-muted-foreground">
             {filter === "all"
-              ? "Les posts générés par l'IA apparaîtront ici."
+              ? "Les posts g\u00e9n\u00e9r\u00e9s par l'IA appara\u00eetront ici."
               : "Aucun post avec ce statut."}
           </p>
         </Card>
@@ -175,8 +240,10 @@ export default function PostsPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Approve / Reject buttons */}
                 {post.status === "pending_review" && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Button
                       size="sm"
                       className="flex-1"
@@ -194,9 +261,97 @@ export default function PostsPage() {
                     </Button>
                   </div>
                 )}
+
+                {/* Publish / Copy / Download buttons for approved posts */}
+                {post.status === "approved" && (
+                  <div className="flex flex-col gap-2">
+                    {hasConnectedAccounts && (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePublish(post.id)}
+                        disabled={publishing === post.id}
+                      >
+                        <Send className="h-4 w-4 mr-1" />
+                        {publishing === post.id
+                          ? "Publication..."
+                          : "Publier maintenant"}
+                      </Button>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleCopyCaption(post)}
+                      >
+                        {copied === post.id ? (
+                          <Check className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-1" />
+                        )}
+                        {copied === post.id ? "Copi\u00e9 !" : "Copier la l\u00e9gende"}
+                      </Button>
+                      {post.generated_image_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleDownloadImage(post)}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          T&eacute;l&eacute;charger
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Copy / Download for published posts too */}
+                {post.status === "published" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleCopyCaption(post)}
+                    >
+                      {copied === post.id ? (
+                        <Check className="h-4 w-4 mr-1" />
+                      ) : (
+                        <Copy className="h-4 w-4 mr-1" />
+                      )}
+                      {copied === post.id ? "Copi\u00e9 !" : "Copier"}
+                    </Button>
+                    {post.generated_image_url && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleDownloadImage(post)}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        T&eacute;l&eacute;charger
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {post.scheduled_for && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Planifié : {new Date(post.scheduled_for).toLocaleDateString("fr-FR")}
+                    Planifi&eacute; :{" "}
+                    {new Date(post.scheduled_for).toLocaleDateString("fr-FR")}
+                  </p>
+                )}
+                {post.published_at && post.status === "published" && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Publi&eacute; le{" "}
+                    {new Date(post.published_at).toLocaleDateString("fr-FR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 )}
               </CardContent>

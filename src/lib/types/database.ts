@@ -17,7 +17,11 @@ export type Database = {
           access_token: string | null
           created_at: string | null
           id: string
+          ig_user_id: string | null
+          ig_username: string | null
           org_id: string | null
+          page_id: string | null
+          page_name: string | null
           platform: string
           platform_user_id: string | null
           platform_username: string | null
@@ -28,7 +32,11 @@ export type Database = {
           access_token?: string | null
           created_at?: string | null
           id?: string
+          ig_user_id?: string | null
+          ig_username?: string | null
           org_id?: string | null
+          page_id?: string | null
+          page_name?: string | null
           platform: string
           platform_user_id?: string | null
           platform_username?: string | null
@@ -39,7 +47,11 @@ export type Database = {
           access_token?: string | null
           created_at?: string | null
           id?: string
+          ig_user_id?: string | null
+          ig_username?: string | null
           org_id?: string | null
+          page_id?: string | null
+          page_name?: string | null
           platform?: string
           platform_user_id?: string | null
           platform_username?: string | null

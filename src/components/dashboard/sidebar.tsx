@@ -1,9 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   Image,
@@ -11,6 +18,7 @@ import {
   Settings,
   Link2,
   LogOut,
+  Menu,
 } from "lucide-react";
 
 const navItems = [
@@ -21,7 +29,7 @@ const navItems = [
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
-export function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -33,13 +41,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-white">
-      <div className="flex h-16 items-center border-b px-6">
-        <Link href="/dashboard" className="text-xl font-bold">
-          CoManager AI
-        </Link>
-      </div>
-
+    <>
       <nav className="flex-1 space-y-1 p-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -47,6 +49,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-primary/10 text-primary"
@@ -70,6 +73,54 @@ export function Sidebar() {
           Déconnexion
         </Button>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-white">
+      <div className="flex h-16 items-center border-b px-6">
+        <Link href="/dashboard" className="text-xl font-bold">
+          CoManager AI
+        </Link>
+      </div>
+      <SidebarContent />
     </aside>
+  );
+}
+
+export function MobileHeader() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <header className="sticky top-0 z-40 flex h-14 items-center border-b bg-white px-4 md:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger
+          render={
+            <Button variant="ghost" size="icon-sm" />
+          }
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Menu</span>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <div className="flex h-14 items-center border-b px-6">
+            <Link
+              href="/dashboard"
+              className="text-xl font-bold"
+              onClick={() => setOpen(false)}
+            >
+              CoManager AI
+            </Link>
+          </div>
+          <div className="flex flex-1 flex-col">
+            <SidebarContent onNavigate={() => setOpen(false)} />
+          </div>
+        </SheetContent>
+      </Sheet>
+      <span className="ml-3 text-lg font-bold">CoManager AI</span>
+    </header>
   );
 }
