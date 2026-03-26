@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -47,8 +48,8 @@ export default function RegisterPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/onboarding");
-      router.refresh();
+      setSuccess(true);
+      setLoading(false);
     }
   }
 
@@ -74,6 +75,19 @@ export default function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {success ? (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+              <p className="font-medium text-green-800">Compte créé avec succès !</p>
+              <p className="mt-2 text-sm text-green-700">
+                Un email de confirmation a été envoyé à <strong>{email}</strong>.
+                Cliquez sur le lien dans l&apos;email pour activer votre compte, puis connectez-vous.
+              </p>
+              <Link href="/login">
+                <Button className="mt-4">Aller à la connexion</Button>
+              </Link>
+            </div>
+          ) : (
+          <>
           <Button
             variant="outline"
             className="w-full"
@@ -158,6 +172,8 @@ export default function RegisterPage() {
               Se connecter
             </Link>
           </p>
+          </>
+          )}
         </CardContent>
       </Card>
     </div>
