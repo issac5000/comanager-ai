@@ -50,18 +50,20 @@ export default function OnboardingPage() {
       return;
     }
 
+    // Generate ID client-side to avoid needing SELECT after INSERT
+    const orgId = crypto.randomUUID();
+
     // Create organization
-    const { data: org, error: orgError } = await supabase
+    const { error: orgError } = await supabase
       .from("organizations")
       .insert({
+        id: orgId,
         name: orgName,
         industry_id: selectedIndustry,
-      })
-      .select()
-      .single();
+      });
 
-    if (orgError || !org) {
-      setError(orgError?.message || "Erreur lors de la création");
+    if (orgError) {
+      setError(orgError.message);
       setLoading(false);
       return;
     }
@@ -70,7 +72,7 @@ export default function OnboardingPage() {
     const { error: memberError } = await supabase
       .from("organization_members")
       .insert({
-        org_id: org.id,
+        org_id: orgId,
         user_id: user.id,
         role: "owner",
       });
@@ -83,7 +85,7 @@ export default function OnboardingPage() {
 
     // Create default publication settings
     await supabase.from("publication_settings").insert({
-      org_id: org.id,
+      org_id: orgId,
     });
 
     router.push("/dashboard");
