@@ -64,11 +64,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const redirectUri = `${origin}/api/meta/callback`;
+
     // 1. Exchange code for short-lived token
-    // Note: no redirect_uri when using config_id in the OAuth dialog
     let shortToken: string;
     try {
-      const result = await exchangeCodeForToken(code);
+      const result = await exchangeCodeForToken(code, redirectUri);
       shortToken = result.access_token;
     } catch (err) {
       console.error("Meta token exchange failed:", err);

@@ -23,12 +23,15 @@ export async function GET(request: NextRequest) {
     path: "/",
   });
 
+  const { origin } = new URL(request.url);
+  const redirectUri = `${origin}/api/meta/callback`;
+
   const authUrl = new URL("https://www.facebook.com/v22.0/dialog/oauth");
   authUrl.searchParams.set("client_id", process.env.META_APP_ID!);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("config_id", process.env.META_CONFIG_ID!);
   authUrl.searchParams.set("state", state);
-  // Note: no redirect_uri and no scope — config_id handles both
 
   return NextResponse.redirect(authUrl.toString());
 }
