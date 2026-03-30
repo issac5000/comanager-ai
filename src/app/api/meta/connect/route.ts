@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("scope", scopes);
   authUrl.searchParams.set("state", state);
+  // Force Facebook to re-show the permission/page selection dialog on reconnection
+  authUrl.searchParams.set("auth_type", "rerequest");
 
   return NextResponse.redirect(authUrl.toString());
 }
