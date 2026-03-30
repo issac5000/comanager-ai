@@ -236,25 +236,22 @@ export default function SettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="industry">Secteur d&apos;activit&eacute;</Label>
-              {industries.length > 0 ? (
-                <Select
-                  value={industryId || undefined}
-                  onValueChange={(v) => setIndustryId(v || null)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un secteur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industries.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.id}>
-                        {ind.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input disabled placeholder="Chargement..." />
-              )}
+              <Select
+                key={industries.length}
+                value={industries.length > 0 ? (industryId || undefined) : undefined}
+                onValueChange={(v) => setIndustryId(v || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un secteur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industries.map((ind) => (
+                    <SelectItem key={ind.id} value={ind.id}>
+                      {ind.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
