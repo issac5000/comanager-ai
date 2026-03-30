@@ -109,8 +109,25 @@ export async function GET(request: Request) {
     }
 
     if (pages.length === 0) {
+      // Debug: check what permissions the token actually has
+      let debugInfo = `pages=${pagesRaw}`;
+      try {
+        const permRes = await fetch(
+          `https://graph.facebook.com/v22.0/me/permissions?access_token=${longUserToken}`
+        );
+        const permData = await permRes.text();
+        debugInfo += ` | perms=${permData}`;
+      } catch { /* ignore */ }
+      try {
+        const meRes = await fetch(
+          `https://graph.facebook.com/v22.0/me?access_token=${longUserToken}`
+        );
+        const meData = await meRes.text();
+        debugInfo += ` | me=${meData}`;
+      } catch { /* ignore */ }
+
       return NextResponse.redirect(
-        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(pagesRaw.slice(0, 300))}`
+        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 500))}`
       );
     }
 
