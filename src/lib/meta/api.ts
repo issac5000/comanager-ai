@@ -17,12 +17,14 @@ export type InstagramAccount = {
  */
 export async function exchangeCodeForToken(
   code: string,
-  redirectUri: string
+  redirectUri?: string
 ): Promise<{ access_token: string; expires_in: number }> {
   const url = new URL(`${META_BASE_URL}/oauth/access_token`);
   url.searchParams.set("client_id", process.env.META_APP_ID!);
   url.searchParams.set("client_secret", process.env.META_APP_SECRET!);
-  url.searchParams.set("redirect_uri", redirectUri);
+  if (redirectUri) {
+    url.searchParams.set("redirect_uri", redirectUri);
+  }
   url.searchParams.set("code", code);
 
   const res = await fetch(url.toString());
