@@ -22,16 +22,22 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST - Receive webhook events from Meta (comments on page posts).
+ * POST - Receive webhook events from Meta (comments on page/instagram posts).
  */
 export async function POST(request: Request) {
   const body = await request.json();
+  const objectType = body.object as string; // "page" or "instagram"
 
   // Always respond 200 quickly to Meta
-  // Process asynchronously
-  processWebhookEntries(body.entry || []).catch((err) =>
-    console.error("Webhook processing error:", err)
-  );
+  if (objectType === "instagram") {
+    processInstagramEntries(body.entry || []).catch((err) =>
+      console.error("Instagram webhook processing error:", err)
+    );
+  } else {
+    processWebhookEntries(body.entry || []).catch((err) =>
+      console.error("Webhook processing error:", err)
+    );
+  }
 
   return NextResponse.json({ received: true });
 }
@@ -165,6 +171,136 @@ async function processWebhookEntries(
         ai_reply: aiReply,
         reply_status: replyStatus,
         page_id: pageId,
+      });
+    }
+  }
+}
+
+/**
+ * Process Instagram comment webhook entries.
+ * Instagram webhook payload: entry[].id = IG user ID, changes[].field = "comments"
+ */
+async function processInstagramEntries(
+  entries: Array<{
+    id: string;
+    time: number;
+    changes?: Array<{
+      field: string;
+      value: Record<string, unknown>;
+    }>;
+  }>
+) {
+  const supabase = createServiceClient();
+
+  for (const entry of entries) {
+    const igUserId = entry.id;
+
+    for (const change of entry.changes || []) {
+      if (change.field !== "comments") continue;
+
+      const value = change.value as {
+        id?: string;
+        text?: string;
+        from?: { id: string; username: string };
+        media?: { id: string };
+      };
+
+      if (!value.id || !value.text) continue;
+
+      // Find the connected account by ig_user_id
+      const { data: account } = await supabase
+        .from("connected_accounts")
+        .select("org_id, access_token, page_id, ig_user_id")
+        .eq("platform", "instagram")
+        .eq("ig_user_id", igUserId)
+        .limit(1)
+        .single();
+
+      if (!account?.org_id) continue;
+
+      // Skip duplicates
+      const { data: existing } = await supabase
+        .from("comments")
+        .select("id")
+        .eq("meta_comment_id", value.id)
+        .limit(1)
+        .single();
+
+      if (existing) continue;
+
+      // Try to match to a post via media ID
+      let postId: string | null = null;
+      let postCaption: string | null = null;
+      const metaPostId = value.media?.id || null;
+
+      if (metaPostId) {
+        const { data: post } = await supabase
+          .from("posts")
+          .select("id, caption")
+          .eq("org_id", account.org_id)
+          .eq("meta_post_id", metaPostId)
+          .limit(1)
+          .single();
+
+        if (post) {
+          postId = post.id;
+          postCaption = post.caption;
+        }
+      }
+
+      // Get org context for AI
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("name, description, brand_voice, custom_industry, industry_id")
+        .eq("id", account.org_id)
+        .single();
+
+      let industryName: string | null = org?.custom_industry || null;
+      if (!industryName && org?.industry_id) {
+        const { data: industry } = await supabase
+          .from("industries")
+          .select("name")
+          .eq("id", org.industry_id)
+          .single();
+        industryName = industry?.name || null;
+      }
+
+      // Generate AI reply
+      let aiReply: string | null = null;
+      let replyStatus = "pending_review";
+      try {
+        aiReply = await generateCommentReply({
+          commentText: value.text,
+          postCaption,
+          orgName: org?.name || "Mon entreprise",
+          orgDescription: org?.description || null,
+          brandVoice: org?.brand_voice || null,
+          industryName,
+          commenterName: value.from?.username || null,
+        });
+
+        if (aiReply.trim().toUpperCase() === "IGNORE") {
+          replyStatus = "ignored";
+          aiReply = null;
+        }
+      } catch (err) {
+        console.error("AI reply generation failed (Instagram):", err);
+        replyStatus = "pending_review";
+      }
+
+      // Store the comment
+      await supabase.from("comments").insert({
+        org_id: account.org_id,
+        post_id: postId,
+        meta_comment_id: value.id,
+        meta_post_id: metaPostId,
+        platform: "instagram",
+        commenter_name: value.from?.username || null,
+        commenter_id: value.from?.id || null,
+        comment_text: value.text,
+        ai_reply: aiReply,
+        reply_status: replyStatus,
+        page_id: account.page_id,
       });
     }
   }

@@ -229,6 +229,31 @@ export async function replyToComment(
 }
 
 /**
+ * Reply to an Instagram comment.
+ */
+export async function replyToInstagramComment(
+  commentId: string,
+  message: string,
+  pageAccessToken: string
+): Promise<{ id: string }> {
+  const url = new URL(`${META_BASE_URL}/${commentId}/replies`);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      access_token: pageAccessToken,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Reply to Instagram comment failed: ${body}`);
+  }
+  return res.json();
+}
+
+/**
  * Get details of a specific comment by ID.
  */
 export async function getCommentDetails(

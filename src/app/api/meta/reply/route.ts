@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { replyToComment } from "@/lib/meta/api";
+import { replyToComment, replyToInstagramComment } from "@/lib/meta/api";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Get the page access token
+  // Get the access token (use facebook account — page tokens work for both FB and IG)
   const { data: account } = await supabase
     .from("connected_accounts")
     .select("access_token")
@@ -59,17 +59,24 @@ export async function POST(request: Request) {
 
   if (!account?.access_token) {
     return NextResponse.json(
-      { error: "Compte Facebook non trouvé pour cette page" },
+      { error: "Compte connect\u00e9 non trouv\u00e9 pour cette page" },
       { status: 400 }
     );
   }
 
   try {
-    const result = await replyToComment(
-      comment.meta_comment_id,
-      reply_text,
-      account.access_token
-    );
+    const result =
+      comment.platform === "instagram"
+        ? await replyToInstagramComment(
+            comment.meta_comment_id,
+            reply_text,
+            account.access_token
+          )
+        : await replyToComment(
+            comment.meta_comment_id,
+            reply_text,
+            account.access_token
+          );
 
     // Update comment status
     await supabase
