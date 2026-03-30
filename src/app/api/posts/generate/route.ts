@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     supabase
       .from("organizations")
       .select(
-        "name, description, brand_voice, industry_id, website, location, target_audience, services, color_palette, topics_include, topics_exclude, industries(name, default_tone, default_hashtags)"
+        "name, description, brand_voice, industry_id, website, location, target_audience, services, color_palette, topics_include, topics_exclude, custom_industry, industries(name, default_tone, default_hashtags)"
       )
       .eq("id", membership.org_id)
       .single(),
@@ -61,6 +61,7 @@ export async function POST(request: Request) {
     color_palette: string[] | null;
     topics_include: string[] | null;
     topics_exclude: string[] | null;
+    custom_industry: string | null;
     industries: {
       name: string;
       default_tone: string | null;
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       orgName: org?.name || "Mon entreprise",
       orgDescription: org?.description || null,
       brandVoice: org?.brand_voice || null,
-      industryName: org?.industries?.name || null,
+      industryName: org?.industries?.name || org?.custom_industry || null,
       industryTone: org?.industries?.default_tone || null,
       industryHashtags: org?.industries?.default_hashtags || null,
       location: org?.location || null,
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
         postTypeName: postType.name,
         orgName: org?.name || "Mon entreprise",
         orgDescription: org?.description || null,
-        industryName: org?.industries?.name || null,
+        industryName: org?.industries?.name || org?.custom_industry || null,
         brandVoice: org?.brand_voice || null,
         colorPalette: org?.color_palette || null,
         services: org?.services || null,

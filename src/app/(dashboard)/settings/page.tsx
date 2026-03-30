@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [topicIncludeInput, setTopicIncludeInput] = useState("");
   const [topicsExclude, setTopicsExclude] = useState<string[]>([]);
   const [topicExcludeInput, setTopicExcludeInput] = useState("");
+  const [customIndustry, setCustomIndustry] = useState("");
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [frequency, setFrequency] = useState("daily");
   const [preferredTime, setPreferredTime] = useState("10:00");
@@ -100,7 +101,14 @@ export default function SettingsPage() {
         setOrgName(org.name);
         setDescription(org.description || "");
         setBrandVoice(org.brand_voice || "");
-        setIndustryId(org.industry_id || null);
+        const orgCustomIndustry = org.custom_industry;
+        if (orgCustomIndustry && !org.industry_id) {
+          setIndustryId("other");
+          setCustomIndustry(orgCustomIndustry);
+        } else {
+          setIndustryId(org.industry_id || null);
+          setCustomIndustry("");
+        }
         setWebsite(org.website || "");
         setLocation(org.location || "");
         setTargetAudience(org.target_audience || "");
@@ -170,7 +178,7 @@ export default function SettingsPage() {
         name: orgName,
         description: description || null,
         brand_voice: brandVoice || null,
-        industry_id: industryId || null,
+        industry_id: industryId === "other" ? null : (industryId || null),
         website: website || null,
         location: location || null,
         target_audience: targetAudience || null,
@@ -178,6 +186,7 @@ export default function SettingsPage() {
         color_palette: colorPalette,
         topics_include: topicsInclude,
         topics_exclude: topicsExclude,
+        custom_industry: industryId === "other" ? customIndustry || null : null,
       })
       .eq("id", orgId);
 
@@ -241,8 +250,10 @@ export default function SettingsPage() {
                 onValueChange={(v) => setIndustryId(v || null)}
               >
                 <SelectTrigger>
-                  <span className={industryId && industries.length > 0 ? "" : "text-muted-foreground"}>
-                    {(industryId && industries.find((i) => i.id === industryId)?.name) || "Choisir un secteur"}
+                  <span className={industryId ? "" : "text-muted-foreground"}>
+                    {industryId === "other"
+                      ? "Autre"
+                      : (industryId && industries.find((i) => i.id === industryId)?.name) || "Choisir un secteur"}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -251,8 +262,17 @@ export default function SettingsPage() {
                       {ind.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="other">Autre</SelectItem>
                 </SelectContent>
               </Select>
+              {industryId === "other" && (
+                <Input
+                  placeholder={"Pr\u00e9cisez votre secteur d'activit\u00e9"}
+                  value={customIndustry}
+                  onChange={(e) => setCustomIndustry(e.target.value)}
+                  className="mt-2"
+                />
+              )}
             </div>
 
             <div className="space-y-2">

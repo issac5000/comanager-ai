@@ -208,6 +208,7 @@ export type Database = {
           brand_voice: string | null
           color_palette: string[] | null
           created_at: string | null
+          custom_industry: string | null
           description: string | null
           id: string
           industry_id: string | null
@@ -226,6 +227,7 @@ export type Database = {
           brand_voice?: string | null
           color_palette?: string[] | null
           created_at?: string | null
+          custom_industry?: string | null
           description?: string | null
           id?: string
           industry_id?: string | null
@@ -244,6 +246,7 @@ export type Database = {
           brand_voice?: string | null
           color_palette?: string[] | null
           created_at?: string | null
+          custom_industry?: string | null
           description?: string | null
           id?: string
           industry_id?: string | null
