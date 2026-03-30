@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw, Sparkles, Loader2, X } from "lucide-react";
 
 type PublishResult = {
   platform: string;
@@ -70,6 +70,8 @@ export default function PostsPage() {
   const [postTypes, setPostTypes] = useState<PostType[]>([]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [expandedCaptions, setExpandedCaptions] = useState<Set<string>>(new Set());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const supabase = createClient();
 
   const loadPosts = useCallback(async () => {
@@ -328,11 +330,14 @@ export default function PostsPage() {
           {posts.map((post) => (
             <Card key={post.id}>
               {post.generated_image_url && (
-                <div className="aspect-square overflow-hidden rounded-t-lg">
+                <div
+                  className="aspect-square overflow-hidden rounded-t-lg cursor-pointer"
+                  onClick={() => setLightboxUrl(post.generated_image_url)}
+                >
                   <img
                     src={post.generated_image_url}
                     alt="Post"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover hover:scale-105 transition-transform duration-200"
                   />
                 </div>
               )}
@@ -350,7 +355,19 @@ export default function PostsPage() {
               </CardHeader>
               <CardContent>
                 {post.caption && (
-                  <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+                  <p
+                    className={`text-sm text-muted-foreground mb-3 cursor-pointer ${
+                      expandedCaptions.has(post.id) ? "" : "line-clamp-3"
+                    }`}
+                    onClick={() => {
+                      setExpandedCaptions((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(post.id)) next.delete(post.id);
+                        else next.add(post.id);
+                        return next;
+                      });
+                    }}
+                  >
                     {post.caption}
                   </p>
                 )}
@@ -553,6 +570,27 @@ export default function PostsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X className="h-8 w-8" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Post en grand"
+            className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
