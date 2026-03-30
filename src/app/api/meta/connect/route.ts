@@ -12,42 +12,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Get org and revoke any existing Meta permissions before reconnecting
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (membership?.org_id) {
-    const { data: existingAccounts } = await supabase
-      .from("connected_accounts")
-      .select("access_token")
-      .eq("org_id", membership.org_id);
-
-    // Revoke all existing Meta tokens to force fresh page selection
-    if (existingAccounts) {
-      for (const acc of existingAccounts) {
-        if (acc.access_token) {
-          try {
-            await fetch(
-              `https://graph.facebook.com/v22.0/me/permissions?access_token=${acc.access_token}`,
-              { method: "DELETE" }
-            );
-          } catch {
-            // Non-blocking
-          }
-        }
-      }
-      // Clean up old accounts
-      await supabase
-        .from("connected_accounts")
-        .delete()
-        .eq("org_id", membership.org_id);
-    }
-  }
-
   // Generate CSRF state token
   const state = crypto.randomUUID();
   const cookieStore = await cookies();
