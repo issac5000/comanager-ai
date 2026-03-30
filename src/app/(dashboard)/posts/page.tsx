@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 
 type PublishResult = {
   platform: string;
@@ -17,6 +17,13 @@ type PublishFeedback = {
   postId: string;
   type: "success" | "partial" | "error";
   message: string;
+};
+
+type PostType = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
 };
 
 type Post = {
@@ -60,6 +67,9 @@ export default function PostsPage() {
   const [publishing, setPublishing] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<PublishFeedback | null>(null);
+  const [postTypes, setPostTypes] = useState<PostType[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const supabase = createClient();
 
   const loadPosts = useCallback(async () => {
@@ -95,13 +105,17 @@ export default function PostsPage() {
       if (membership?.org_id) {
         setOrgId(membership.org_id);
 
-        // Check if there are connected accounts
-        const { count } = await supabase
-          .from("connected_accounts")
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", membership.org_id);
+        // Load connected accounts and post types in parallel
+        const [accountsResult, typesResult] = await Promise.all([
+          supabase
+            .from("connected_accounts")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", membership.org_id),
+          supabase.from("post_types").select("id, name, slug, description"),
+        ]);
 
-        setHasConnectedAccounts((count ?? 0) > 0);
+        setHasConnectedAccounts((accountsResult.count ?? 0) > 0);
+        if (typesResult.data) setPostTypes(typesResult.data);
       }
     }
     init();
@@ -125,6 +139,30 @@ export default function PostsPage() {
       .update({ status: "rejected" })
       .eq("id", postId);
     loadPosts();
+  }
+
+  async function handleGenerate(postTypeId: string) {
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await fetch("/api/posts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post_type_id: postTypeId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setGenerateError(data.error || "Erreur lors de la g\u00e9n\u00e9ration");
+        return;
+      }
+
+      loadPosts();
+    } catch {
+      setGenerateError("Erreur r\u00e9seau. V\u00e9rifiez votre connexion.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function handlePublish(postId: string) {
@@ -222,6 +260,44 @@ export default function PostsPage() {
           G&eacute;rez et validez vos posts g&eacute;n&eacute;r&eacute;s par l&apos;IA
         </p>
       </div>
+
+      {/* Generate post */}
+      {postTypes.length > 0 && (
+        <Card className="mb-6">
+          <CardContent className="flex flex-col gap-3 p-4">
+            <p className="text-sm font-medium">G&eacute;n&eacute;rer un nouveau post</p>
+            {generateError && (
+              <div className="text-xs p-2 rounded bg-red-50 text-red-700 border border-red-200">
+                <AlertCircle className="h-3 w-3 inline mr-1" />
+                {generateError}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {postTypes.map((pt) => (
+                <Button
+                  key={pt.id}
+                  size="sm"
+                  variant="outline"
+                  disabled={generating}
+                  onClick={() => handleGenerate(pt.id)}
+                >
+                  {generating ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  {pt.name}
+                </Button>
+              ))}
+            </div>
+            {generating && (
+              <p className="text-xs text-muted-foreground">
+                G&eacute;n&eacute;ration en cours (caption + image)... Cela peut prendre 15-30s.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {FILTERS.map((f) => (
