@@ -237,11 +237,11 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="industry">Secteur d&apos;activit&eacute;</Label>
               <Select
-                value={industryId || ""}
+                value={industryId && industries.length > 0 ? industryId : ""}
                 onValueChange={(v) => setIndustryId(v || null)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="S\u00e9lectionnez votre secteur" />
+                  <SelectValue placeholder="Choisir un secteur" />
                 </SelectTrigger>
                 <SelectContent>
                   {industries.map((ind) => (
@@ -259,7 +259,7 @@ export default function SettingsPage() {
               </Label>
               <Textarea
                 id="description"
-                placeholder="D\u00e9crivez votre activit\u00e9, vos produits/services, ce qui vous diff\u00e9rencie... (ex: Boulangerie artisanale \u00e0 Lyon, sp\u00e9cialis\u00e9e dans le pain au levain et les p\u00e2tisseries maison. Nous utilisons uniquement des farines bio locales.)"
+                placeholder={"D\u00e9crivez votre activit\u00e9, vos produits/services, ce qui vous diff\u00e9rencie... (ex: Boulangerie artisanale \u00e0 Lyon, sp\u00e9cialis\u00e9e dans le pain au levain et les p\u00e2tisseries maison.)"}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -291,7 +291,7 @@ export default function SettingsPage() {
               <Label htmlFor="targetAudience">Audience cible</Label>
               <Textarea
                 id="targetAudience"
-                placeholder="D\u00e9crivez vos clients id\u00e9aux (ex: Jeunes actifs 25-40 ans, soucieux de leur alimentation, habitant en centre-ville)"
+                placeholder={"D\u00e9crivez vos clients id\u00e9aux (ex: Jeunes actifs 25-40 ans, soucieux de leur alimentation, habitant en centre-ville)"}
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
                 rows={2}
@@ -303,7 +303,7 @@ export default function SettingsPage() {
               <Label>Produits / Services</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ajoutez un produit ou service puis Entr\u00e9e"
+                  placeholder={"Ajoutez un produit ou service puis Entr\u00e9e"}
                   value={serviceInput}
                   onChange={(e) => setServiceInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -357,7 +357,7 @@ export default function SettingsPage() {
               <Label htmlFor="brandVoice">Ton &eacute;ditorial</Label>
               <Textarea
                 id="brandVoice"
-                placeholder="D\u00e9crivez le ton souhait\u00e9 (ex: Chaleureux et authentique, on tutoie nos clients, on utilise des expressions du terroir lyonnais. Ton passionn\u00e9 quand on parle de nos produits.)"
+                placeholder={"D\u00e9crivez le ton souhait\u00e9 (ex: Chaleureux et authentique, on tutoie nos clients. Ton passionn\u00e9 quand on parle de nos produits.)"}
                 value={brandVoice}
                 onChange={(e) => setBrandVoice(e.target.value)}
                 rows={3}
