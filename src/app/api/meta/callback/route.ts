@@ -196,8 +196,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/accounts?success=meta_connected`);
   } catch (err) {
     console.error("Meta OAuth callback error:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
     return NextResponse.redirect(
-      `${origin}/accounts?error=meta_callback_failed`
+      `${origin}/accounts?error=meta_callback_failed&detail=${encodeURIComponent(errMsg.slice(0, 200))}`
     );
   }
 }

@@ -262,9 +262,10 @@ function URLMessages() {
         text: "V\u00e9rification de s\u00e9curit\u00e9 \u00e9chou\u00e9e (CSRF). Veuillez r\u00e9essayer.",
       });
     } else if (error) {
+      const detail = params.get("detail");
       setMessage({
         type: "error",
-        text: `Une erreur est survenue lors de la connexion Meta (${error}).`,
+        text: `Erreur connexion Meta : ${error}${detail ? ` — ${detail}` : ""}`,
       });
     }
 
