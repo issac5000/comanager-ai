@@ -67,19 +67,43 @@ export async function GET(request: Request) {
     const redirectUri = `${origin}/api/meta/callback`;
 
     // 1. Exchange code for short-lived token
-    const { access_token: shortToken } = await exchangeCodeForToken(
-      code,
-      redirectUri
-    );
+    let shortToken: string;
+    try {
+      const result = await exchangeCodeForToken(code, redirectUri);
+      shortToken = result.access_token;
+    } catch (err) {
+      console.error("Meta token exchange failed:", err);
+      return NextResponse.redirect(
+        `${origin}/accounts?error=token_exchange_failed`
+      );
+    }
 
     // 2. Exchange for long-lived user token (~60 days)
-    const { access_token: longUserToken, expires_in } =
-      await getLongLivedUserToken(shortToken);
+    let longUserToken: string;
+    let expires_in: number;
+    try {
+      const result = await getLongLivedUserToken(shortToken);
+      longUserToken = result.access_token;
+      expires_in = result.expires_in;
+    } catch (err) {
+      console.error("Meta long-lived token failed:", err);
+      return NextResponse.redirect(
+        `${origin}/accounts?error=long_token_failed`
+      );
+    }
 
     const tokenExpiresAt = calculateExpiryDate(expires_in);
 
     // 3. Get user's Facebook Pages (page tokens are long-lived/permanent)
-    const pages = await getUserPages(longUserToken);
+    let pages;
+    try {
+      pages = await getUserPages(longUserToken);
+    } catch (err) {
+      console.error("Meta get pages failed:", err);
+      return NextResponse.redirect(
+        `${origin}/accounts?error=get_pages_failed`
+      );
+    }
 
     if (pages.length === 0) {
       return NextResponse.redirect(

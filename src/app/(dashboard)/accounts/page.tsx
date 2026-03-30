@@ -241,10 +241,30 @@ function URLMessages() {
         type: "error",
         text: "Aucune Page Facebook trouv\u00e9e. Vous devez g\u00e9rer au moins une Page.",
       });
+    } else if (error === "token_exchange_failed") {
+      setMessage({
+        type: "error",
+        text: "\u00c9change du code d'autorisation \u00e9chou\u00e9. Le code a peut-\u00eatre expir\u00e9. Veuillez r\u00e9essayer.",
+      });
+    } else if (error === "long_token_failed") {
+      setMessage({
+        type: "error",
+        text: "\u00c9change pour un token longue dur\u00e9e \u00e9chou\u00e9. V\u00e9rifiez la configuration de l'app Meta.",
+      });
+    } else if (error === "get_pages_failed") {
+      setMessage({
+        type: "error",
+        text: "Impossible de r\u00e9cup\u00e9rer vos Pages Facebook. V\u00e9rifiez les permissions accord\u00e9es.",
+      });
+    } else if (error === "invalid_state") {
+      setMessage({
+        type: "error",
+        text: "V\u00e9rification de s\u00e9curit\u00e9 \u00e9chou\u00e9e (CSRF). Veuillez r\u00e9essayer.",
+      });
     } else if (error) {
       setMessage({
         type: "error",
-        text: "Une erreur est survenue lors de la connexion Meta.",
+        text: `Une erreur est survenue lors de la connexion Meta (${error}).`,
       });
     }
 
