@@ -237,9 +237,10 @@ function URLMessages() {
         text: "Vous avez refus\u00e9 les permissions Meta. Veuillez r\u00e9essayer.",
       });
     } else if (error === "no_pages") {
+      const detail = params.get("detail");
       setMessage({
         type: "error",
-        text: "Aucune Page Facebook trouv\u00e9e. Vous devez g\u00e9rer au moins une Page.",
+        text: `Aucune Page Facebook trouv\u00e9e. ${detail ? `R\u00e9ponse Meta : ${detail}` : "Vous devez g\u00e9rer au moins une Page."}`,
       });
     } else if (error === "token_exchange_failed") {
       setMessage({
