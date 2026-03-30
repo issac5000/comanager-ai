@@ -59,18 +59,18 @@ export async function getLongLivedUserToken(
  */
 export async function getUserPages(
   userAccessToken: string
-): Promise<MetaPage[]> {
+): Promise<{ pages: MetaPage[]; raw: string }> {
   const url = new URL(`${META_BASE_URL}/me/accounts`);
   url.searchParams.set("access_token", userAccessToken);
   url.searchParams.set("fields", "id,name,access_token");
 
   const res = await fetch(url.toString());
+  const body = await res.text();
   if (!res.ok) {
-    const body = await res.text();
     throw new Error(`Meta get pages failed: ${body}`);
   }
-  const data = await res.json();
-  return data.data as MetaPage[];
+  const data = JSON.parse(body);
+  return { pages: (data.data || []) as MetaPage[], raw: body };
 }
 
 /**

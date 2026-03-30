@@ -96,8 +96,11 @@ export async function GET(request: Request) {
 
     // 3. Get user's Facebook Pages (page tokens are long-lived/permanent)
     let pages;
+    let pagesRaw: string;
     try {
-      pages = await getUserPages(longUserToken);
+      const result = await getUserPages(longUserToken);
+      pages = result.pages;
+      pagesRaw = result.raw;
     } catch (err) {
       console.error("Meta get pages failed:", err);
       return NextResponse.redirect(
@@ -107,7 +110,7 @@ export async function GET(request: Request) {
 
     if (pages.length === 0) {
       return NextResponse.redirect(
-        `${origin}/accounts?error=no_pages`
+        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(pagesRaw.slice(0, 300))}`
       );
     }
 
