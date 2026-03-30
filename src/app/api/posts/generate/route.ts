@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    return NextResponse.json({ error: "Non authentifi\u00e9" }, { status: 401 });
   }
 
   const { data: membership } = await supabase
@@ -34,34 +34,48 @@ export async function POST(request: Request) {
   }
 
   // Fetch all context in parallel
-  const [orgResult, postTypeResult, industryResult] = await Promise.all([
+  const [orgResult, postTypeResult] = await Promise.all([
     supabase
       .from("organizations")
-      .select("brand_voice, industry_id, topics_include, topics_exclude")
+      .select(
+        "name, description, brand_voice, industry_id, website, location, target_audience, services, color_palette, topics_include, topics_exclude, industries(name, default_tone, default_hashtags)"
+      )
       .eq("id", membership.org_id)
       .single(),
-    supabase.from("post_types").select("name, slug, description").eq("id", post_type_id).single(),
-    // Get industry through org
     supabase
-      .from("organizations")
-      .select("industries(name, default_tone, default_hashtags)")
-      .eq("id", membership.org_id)
+      .from("post_types")
+      .select("name, slug, description")
+      .eq("id", post_type_id)
       .single(),
   ]);
 
-  const org = orgResult.data;
+  const org = orgResult.data as unknown as {
+    name: string;
+    description: string | null;
+    brand_voice: string | null;
+    industry_id: string | null;
+    website: string | null;
+    location: string | null;
+    target_audience: string | null;
+    services: string[] | null;
+    color_palette: string[] | null;
+    topics_include: string[] | null;
+    topics_exclude: string[] | null;
+    industries: {
+      name: string;
+      default_tone: string | null;
+      default_hashtags: string[] | null;
+    } | null;
+  } | null;
+
   const postType = postTypeResult.data;
 
   if (!postType) {
     return NextResponse.json(
-      { error: "Type de post non trouvé" },
+      { error: "Type de post non trouv\u00e9" },
       { status: 404 }
     );
   }
-
-  const industry = (industryResult.data as unknown as {
-    industries: { name: string; default_tone: string | null; default_hashtags: string[] | null } | null;
-  })?.industries;
 
   // If source_media_id provided, get the media URL
   let sourceMediaUrl: string | null = null;
@@ -86,9 +100,15 @@ export async function POST(request: Request) {
     const { caption, hashtags } = await generateCaption({
       postTypeName: postType.name,
       postTypeDescription: postType.description,
+      orgName: org?.name || "Mon entreprise",
+      orgDescription: org?.description || null,
       brandVoice: org?.brand_voice || null,
-      industryTone: industry?.default_tone || null,
-      industryHashtags: industry?.default_hashtags || null,
+      industryName: org?.industries?.name || null,
+      industryTone: org?.industries?.default_tone || null,
+      industryHashtags: org?.industries?.default_hashtags || null,
+      location: org?.location || null,
+      targetAudience: org?.target_audience || null,
+      services: org?.services || null,
       topicsInclude: org?.topics_include || null,
       topicsExclude: org?.topics_exclude || null,
     });
@@ -100,7 +120,12 @@ export async function POST(request: Request) {
       const imagePrompt = buildImagePrompt({
         caption,
         postTypeName: postType.name,
+        orgName: org?.name || "Mon entreprise",
+        orgDescription: org?.description || null,
+        industryName: org?.industries?.name || null,
         brandVoice: org?.brand_voice || null,
+        colorPalette: org?.color_palette || null,
+        services: org?.services || null,
       });
 
       const { base64, mimeType } = await generateImage(imagePrompt);
@@ -149,7 +174,7 @@ export async function POST(request: Request) {
     console.error("Post generation error:", err);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: `Échec de la génération : ${message}` },
+      { error: `\u00c9chec de la g\u00e9n\u00e9ration : ${message}` },
       { status: 500 }
     );
   }

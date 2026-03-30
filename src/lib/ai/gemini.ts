@@ -57,16 +57,41 @@ export async function generateImage(prompt: string): Promise<{
 export function buildImagePrompt(context: {
   caption: string;
   postTypeName: string;
+  orgName: string;
+  orgDescription: string | null;
+  industryName: string | null;
   brandVoice: string | null;
+  colorPalette: string[] | null;
+  services: string[] | null;
 }): string {
-  return `Create a professional, visually appealing social media image for a ${context.postTypeName} post.
+  const parts = [
+    `Create a professional, visually appealing social media image for "${context.orgName}".`,
+    "",
+    "Requirements:",
+    "- Eye-catching, suitable for Instagram/Facebook (square 1:1 ratio)",
+    "- Clean, modern aesthetic",
+    "- Do NOT include any text, watermarks, or logos",
+    "- Photorealistic or high-quality style",
+  ];
 
-The image should:
-- Be eye-catching and suitable for Instagram/Facebook
-- Have a clean, modern aesthetic
-- NOT contain any text or watermarks
-- Be photorealistic or high-quality illustration style
-${context.brandVoice ? `- Match this brand tone: ${context.brandVoice}` : ""}
+  if (context.orgDescription) {
+    parts.push(`- The business is: ${context.orgDescription}`);
+  }
+  if (context.industryName) {
+    parts.push(`- Industry: ${context.industryName}`);
+  }
+  if (context.services?.length) {
+    parts.push(`- Products/services to feature: ${context.services.join(", ")}`);
+  }
+  if (context.colorPalette?.length) {
+    parts.push(`- Use these brand colors as accents if possible: ${context.colorPalette.join(", ")}`);
+  }
+  if (context.brandVoice) {
+    parts.push(`- Visual mood should match this tone: ${context.brandVoice}`);
+  }
 
-Context of the post: ${context.caption}`;
+  parts.push("", `Post type: ${context.postTypeName}`);
+  parts.push(`Post caption (for context): ${context.caption}`);
+
+  return parts.join("\n");
 }
