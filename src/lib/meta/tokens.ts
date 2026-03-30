@@ -13,8 +13,10 @@ export function isTokenExpiringSoon(expiresAt: string | null): boolean {
 
 /**
  * Calculate the expiry date from an expires_in value (in seconds).
+ * Returns null if expires_in is not a valid number (e.g. page tokens that never expire).
  */
-export function calculateExpiryDate(expiresInSeconds: number): string {
+export function calculateExpiryDate(expiresInSeconds: number | undefined | null): string | null {
+  if (!expiresInSeconds || !Number.isFinite(expiresInSeconds)) return null;
   const date = new Date();
   date.setSeconds(date.getSeconds() + expiresInSeconds);
   return date.toISOString();

@@ -80,7 +80,7 @@ export async function GET(request: Request) {
 
     // 2. Exchange for long-lived user token (~60 days)
     let longUserToken: string;
-    let expires_in: number;
+    let expires_in: number | undefined;
     try {
       const result = await getLongLivedUserToken(shortToken);
       longUserToken = result.access_token;
