@@ -237,12 +237,13 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="industry">Secteur d&apos;activit&eacute;</Label>
               <Select
-                key={industries.length}
-                value={industries.length > 0 ? (industryId || undefined) : undefined}
+                value={industryId || undefined}
                 onValueChange={(v) => setIndustryId(v || null)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choisir un secteur" />
+                  <span className={industryId && industries.length > 0 ? "" : "text-muted-foreground"}>
+                    {(industryId && industries.find((i) => i.id === industryId)?.name) || "Choisir un secteur"}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {industries.map((ind) => (
