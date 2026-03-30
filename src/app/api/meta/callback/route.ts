@@ -149,6 +149,7 @@ export async function GET(request: Request) {
     }
 
     // 4. For each page, save Facebook + detect and save Instagram
+    let igDebugRaw = "";
     for (const page of pages) {
       // Upsert Facebook account
       const { data: existingFb } = await supabase
@@ -161,7 +162,19 @@ export async function GET(request: Request) {
         .single();
 
       // Check for linked Instagram Business account
+      // Debug: log the raw response to see what Meta returns
+      let igDebugRaw = "";
+      try {
+        const igCheckRes = await fetch(
+          `https://graph.facebook.com/v22.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+        );
+        igDebugRaw = await igCheckRes.text();
+      } catch { /* ignore */ }
       const igAccount = await getInstagramAccount(page.id, page.access_token);
+      // Store debug info in a temporary field for diagnosis
+      if (!igAccount) {
+        console.error(`Instagram debug for page ${page.id}: ${igDebugRaw}`);
+      }
 
       if (existingFb) {
         await supabase
@@ -230,7 +243,9 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.redirect(`${origin}/accounts?success=meta_connected`);
+    return NextResponse.redirect(
+      `${origin}/accounts?success=meta_connected&ig_debug=${encodeURIComponent(igDebugRaw.slice(0, 300))}`
+    );
   } catch (err) {
     console.error("Meta OAuth callback error:", err);
     const errMsg = err instanceof Error ? err.message : String(err);
