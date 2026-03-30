@@ -27,11 +27,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "account_id requis" }, { status: 400 });
   }
 
-  // Delete the account (only if it belongs to this org)
+  // Fetch the account to get its access token before deleting
+  const { data: account } = await supabase
+    .from("connected_accounts")
+    .select("access_token")
+    .eq("id", account_id)
+    .eq("org_id", membership.org_id)
+    .single();
+
+  // Revoke Meta permissions so the next connect shows the full dialog
+  if (account?.access_token) {
+    try {
+      await fetch(
+        `https://graph.facebook.com/v22.0/me/permissions?access_token=${account.access_token}`,
+        { method: "DELETE" }
+      );
+    } catch {
+      // Non-blocking: continue even if revoke fails
+    }
+  }
+
+  // Delete all connected accounts for this org (FB + IG are linked)
   const { error } = await supabase
     .from("connected_accounts")
     .delete()
-    .eq("id", account_id)
     .eq("org_id", membership.org_id);
 
   if (error) {
