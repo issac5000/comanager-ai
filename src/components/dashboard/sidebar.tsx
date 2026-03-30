@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Image,
   FileText,
+  MessageCircle,
   Settings,
   Link2,
   LogOut,
@@ -25,7 +26,8 @@ const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/media", label: "Médiathèque", icon: Image },
   { href: "/posts", label: "Publications", icon: FileText },
-  { href: "/accounts", label: "Comptes connectés", icon: Link2 },
+  { href: "/comments", label: "Commentaires", icon: MessageCircle },
+  { href: "/accounts", label: "Comptes connect\u00e9s", icon: Link2 },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 

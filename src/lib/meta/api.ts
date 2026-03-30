@@ -178,3 +178,68 @@ export async function publishToInstagram(
   }
   return publishRes.json();
 }
+
+/**
+ * Subscribe a Facebook Page to webhook events (feed/comments).
+ * Must be called after OAuth with the page access token.
+ */
+export async function subscribePageToWebhooks(
+  pageId: string,
+  pageAccessToken: string
+): Promise<void> {
+  const url = new URL(`${META_BASE_URL}/${pageId}/subscribed_apps`);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subscribed_fields: "feed",
+      access_token: pageAccessToken,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`Webhook subscription failed for page ${pageId}:`, body);
+  }
+}
+
+/**
+ * Reply to a Facebook comment.
+ */
+export async function replyToComment(
+  commentId: string,
+  message: string,
+  pageAccessToken: string
+): Promise<{ id: string }> {
+  const url = new URL(`${META_BASE_URL}/${commentId}/comments`);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      access_token: pageAccessToken,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Reply to comment failed: ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get details of a specific comment by ID.
+ */
+export async function getCommentDetails(
+  commentId: string,
+  pageAccessToken: string
+): Promise<{ id: string; message: string; from?: { id: string; name: string } } | null> {
+  const url = new URL(`${META_BASE_URL}/${commentId}`);
+  url.searchParams.set("fields", "id,message,from");
+  url.searchParams.set("access_token", pageAccessToken);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
+  return res.json();
+}

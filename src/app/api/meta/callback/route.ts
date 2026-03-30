@@ -6,6 +6,7 @@ import {
   getLongLivedUserToken,
   getUserPages,
   getInstagramAccount,
+  subscribePageToWebhooks,
 } from "@/lib/meta/api";
 import { calculateExpiryDate } from "@/lib/meta/tokens";
 
@@ -128,6 +129,9 @@ export async function GET(request: Request) {
           ig_username: igAccount?.username || null,
         });
       }
+
+      // Subscribe page to webhook events (comments)
+      await subscribePageToWebhooks(page.id, page.access_token);
 
       // Upsert Instagram account if linked
       if (igAccount) {

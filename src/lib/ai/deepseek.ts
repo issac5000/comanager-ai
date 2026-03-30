@@ -120,3 +120,87 @@ Règles strictes :
 
   return parsed;
 }
+
+export type CommentReplyContext = {
+  commentText: string;
+  postCaption: string | null;
+  orgName: string;
+  orgDescription: string | null;
+  brandVoice: string | null;
+  industryName: string | null;
+  commenterName: string | null;
+};
+
+/**
+ * Generate a reply to a social media comment using DeepSeek.
+ */
+export async function generateCommentReply(
+  context: CommentReplyContext
+): Promise<string> {
+  const systemPrompt = `Tu es un community manager expert. Tu rédiges des réponses aux commentaires sur les réseaux sociaux pour une entreprise.
+
+Règles strictes :
+- Écris en français
+- Sois poli, professionnel et chaleureux
+- La réponse doit faire 1 à 3 phrases maximum
+- Adapte le ton à celui de la marque
+- Si c'est un compliment, remercie sincèrement
+- Si c'est une question, réponds de manière utile
+- Si c'est une plainte, montre de l'empathie et propose de l'aide
+- Si c'est du spam ou un commentaire inapproprié, réponds "IGNORE"
+- Ne mets PAS de hashtags dans la réponse
+- 1 emoji max si pertinent
+- Réponds UNIQUEMENT le texte de la réponse, rien d'autre`;
+
+  const parts: string[] = [
+    `Commentaire de ${context.commenterName || "un utilisateur"} : "${context.commentText}"`,
+    "",
+    `Entreprise : ${context.orgName}`,
+  ];
+
+  if (context.orgDescription) {
+    parts.push(`Description : ${context.orgDescription}`);
+  }
+  if (context.brandVoice) {
+    parts.push(`Ton de la marque : ${context.brandVoice}`);
+  }
+  if (context.industryName) {
+    parts.push(`Secteur : ${context.industryName}`);
+  }
+  if (context.postCaption) {
+    parts.push(`\nCaption du post commenté : "${context.postCaption}"`);
+  }
+
+  const userPrompt = parts.join("\n");
+
+  const res = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 200,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`DeepSeek API error: ${body}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content?.trim();
+
+  if (!content) {
+    throw new Error("DeepSeek returned empty response");
+  }
+
+  return content;
+}

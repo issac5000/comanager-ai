@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      comments: {
+        Row: {
+          ai_reply: string | null
+          comment_text: string
+          commenter_id: string | null
+          commenter_name: string | null
+          created_at: string | null
+          id: string
+          meta_comment_id: string
+          meta_post_id: string | null
+          meta_reply_id: string | null
+          org_id: string | null
+          page_id: string | null
+          platform: string
+          post_id: string | null
+          replied_at: string | null
+          reply_status: string
+        }
+        Insert: {
+          ai_reply?: string | null
+          comment_text: string
+          commenter_id?: string | null
+          commenter_name?: string | null
+          created_at?: string | null
+          id?: string
+          meta_comment_id: string
+          meta_post_id?: string | null
+          meta_reply_id?: string | null
+          org_id?: string | null
+          page_id?: string | null
+          platform?: string
+          post_id?: string | null
+          replied_at?: string | null
+          reply_status?: string
+        }
+        Update: {
+          ai_reply?: string | null
+          comment_text?: string
+          commenter_id?: string | null
+          commenter_name?: string | null
+          created_at?: string | null
+          id?: string
+          meta_comment_id?: string
+          meta_post_id?: string | null
+          meta_reply_id?: string | null
+          org_id?: string | null
+          page_id?: string | null
+          platform?: string
+          post_id?: string | null
+          replied_at?: string | null
+          reply_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connected_accounts: {
         Row: {
           access_token: string | null
