@@ -5,7 +5,19 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Send, Copy, Download, Check } from "lucide-react";
+import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw } from "lucide-react";
+
+type PublishResult = {
+  platform: string;
+  success: boolean;
+  error?: string;
+};
+
+type PublishFeedback = {
+  postId: string;
+  type: "success" | "partial" | "error";
+  message: string;
+};
 
 type Post = {
   id: string;
@@ -47,6 +59,7 @@ export default function PostsPage() {
   const [hasConnectedAccounts, setHasConnectedAccounts] = useState(false);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<PublishFeedback | null>(null);
   const supabase = createClient();
 
   const loadPosts = useCallback(async () => {
@@ -116,15 +129,54 @@ export default function PostsPage() {
 
   async function handlePublish(postId: string) {
     setPublishing(postId);
+    setFeedback(null);
     try {
       const res = await fetch("/api/meta/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ post_id: postId }),
       });
-      if (res.ok) {
-        loadPosts();
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFeedback({
+          postId,
+          type: "error",
+          message: data.error || "Erreur lors de la publication",
+        });
+        return;
       }
+
+      const results = data.results as PublishResult[];
+      const successes = results.filter((r) => r.success);
+      const failures = results.filter((r) => !r.success);
+
+      if (failures.length === 0) {
+        setFeedback({
+          postId,
+          type: "success",
+          message: `Publi\u00e9 sur ${successes.map((r) => r.platform.split(":")[0]).join(" et ")}`,
+        });
+      } else if (successes.length > 0) {
+        setFeedback({
+          postId,
+          type: "partial",
+          message: `Publi\u00e9 sur ${successes.map((r) => r.platform.split(":")[0]).join(", ")}. \u00c9chec sur ${failures.map((r) => r.platform.split(":")[0]).join(", ")}`,
+        });
+      } else {
+        setFeedback({
+          postId,
+          type: "error",
+          message: `\u00c9chec : ${failures[0]?.error || "Erreur inconnue"}`,
+        });
+      }
+      loadPosts();
+    } catch {
+      setFeedback({
+        postId,
+        type: "error",
+        message: "Erreur r\u00e9seau. V\u00e9rifiez votre connexion.",
+      });
     } finally {
       setPublishing(null);
     }
@@ -262,6 +314,24 @@ export default function PostsPage() {
                   </div>
                 )}
 
+                {/* Publish feedback */}
+                {feedback?.postId === post.id && (
+                  <div
+                    className={`text-xs p-2 rounded mb-2 ${
+                      feedback.type === "success"
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : feedback.type === "partial"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    {feedback.type === "error" && (
+                      <AlertCircle className="h-3 w-3 inline mr-1" />
+                    )}
+                    {feedback.message}
+                  </div>
+                )}
+
                 {/* Publish / Copy / Download buttons for approved posts */}
                 {post.status === "approved" && (
                   <div className="flex flex-col gap-2">
@@ -290,6 +360,56 @@ export default function PostsPage() {
                           <Copy className="h-4 w-4 mr-1" />
                         )}
                         {copied === post.id ? "Copi\u00e9 !" : "Copier la l\u00e9gende"}
+                      </Button>
+                      {post.generated_image_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleDownloadImage(post)}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          T&eacute;l&eacute;charger
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Retry button for failed posts */}
+                {post.status === "failed" && (
+                  <div className="flex flex-col gap-2">
+                    {hasConnectedAccounts && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
+                          await supabase
+                            .from("posts")
+                            .update({ status: "approved" })
+                            .eq("id", post.id);
+                          await loadPosts();
+                          handlePublish(post.id);
+                        }}
+                        disabled={publishing === post.id}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        {publishing === post.id ? "Publication..." : "R\u00e9essayer"}
+                      </Button>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleCopyCaption(post)}
+                      >
+                        {copied === post.id ? (
+                          <Check className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-1" />
+                        )}
+                        {copied === post.id ? "Copi\u00e9 !" : "Copier"}
                       </Button>
                       {post.generated_image_url && (
                         <Button
