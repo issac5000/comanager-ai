@@ -109,27 +109,43 @@ export async function GET(request: Request) {
     }
 
     if (pages.length === 0) {
-      // Debug: try with short token too, and check /me/accounts?fields=
-      let debugInfo = `long_token_pages=${pagesRaw}`;
-      try {
-        const shortPagesRes = await fetch(
-          `https://graph.facebook.com/v22.0/me/accounts?access_token=${shortToken}&fields=id,name,access_token`
-        );
-        const shortPagesData = await shortPagesRes.text();
-        debugInfo += ` | short_token_pages=${shortPagesData}`;
-      } catch { /* ignore */ }
-      try {
-        // Try debug token to see scopes
-        const debugRes = await fetch(
-          `https://graph.facebook.com/v22.0/debug_token?input_token=${longUserToken}&access_token=${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
-        );
-        const debugData = await debugRes.text();
-        debugInfo += ` | token_debug=${debugData}`;
-      } catch { /* ignore */ }
+      // Try older API versions as fallback
+      const versions = ["v19.0", "v20.0", "v21.0"];
+      let debugInfo = `v22=${pagesRaw}`;
+      for (const ver of versions) {
+        try {
+          const res = await fetch(
+            `https://graph.facebook.com/${ver}/me/accounts?access_token=${longUserToken}&fields=id,name,access_token`
+          );
+          const data = await res.text();
+          debugInfo += ` | ${ver}=${data}`;
+          const parsed = JSON.parse(data);
+          if (parsed.data && parsed.data.length > 0) {
+            // Found pages with older version! Use them.
+            pages = parsed.data;
+            pagesRaw = data;
+            break;
+          }
+        } catch { /* ignore */ }
+      }
 
-      return NextResponse.redirect(
-        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 800))}`
-      );
+      // If still no pages, try with app token to get user's pages
+      if (pages.length === 0) {
+        try {
+          const appToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`;
+          const res = await fetch(
+            `https://graph.facebook.com/v22.0/122117846559217925/accounts?access_token=${longUserToken}`
+          );
+          const data = await res.text();
+          debugInfo += ` | user_id_accounts=${data}`;
+        } catch { /* ignore */ }
+      }
+
+      if (pages.length === 0) {
+        return NextResponse.redirect(
+          `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 800))}`
+        );
+      }
     }
 
     // 4. For each page, save Facebook + detect and save Instagram
