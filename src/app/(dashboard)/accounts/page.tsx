@@ -227,10 +227,9 @@ function URLMessages() {
     const error = params.get("error");
 
     if (success === "meta_connected") {
-      const igDebug = params.get("ig_debug");
       setMessage({
         type: "success",
-        text: `Comptes Facebook & Instagram connect\u00e9s avec succ\u00e8s !${igDebug ? ` [IG debug: ${igDebug}]` : ""}`,
+        text: "Comptes Facebook & Instagram connect\u00e9s avec succ\u00e8s !",
       });
     } else if (error === "meta_auth_denied") {
       setMessage({

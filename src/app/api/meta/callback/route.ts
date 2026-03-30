@@ -67,89 +67,27 @@ export async function GET(request: Request) {
     const redirectUri = `${origin}/api/meta/callback`;
 
     // 1. Exchange code for short-lived token
-    let shortToken: string;
-    try {
-      const result = await exchangeCodeForToken(code, redirectUri);
-      shortToken = result.access_token;
-    } catch (err) {
-      console.error("Meta token exchange failed:", err);
-      return NextResponse.redirect(
-        `${origin}/accounts?error=token_exchange_failed`
-      );
-    }
+    const { access_token: shortToken } = await exchangeCodeForToken(
+      code,
+      redirectUri
+    );
 
     // 2. Exchange for long-lived user token (~60 days)
-    let longUserToken: string;
-    let expires_in: number | undefined;
-    try {
-      const result = await getLongLivedUserToken(shortToken);
-      longUserToken = result.access_token;
-      expires_in = result.expires_in;
-    } catch (err) {
-      console.error("Meta long-lived token failed:", err);
-      return NextResponse.redirect(
-        `${origin}/accounts?error=long_token_failed`
-      );
-    }
+    const { access_token: longUserToken, expires_in } =
+      await getLongLivedUserToken(shortToken);
 
     const tokenExpiresAt = calculateExpiryDate(expires_in);
 
     // 3. Get user's Facebook Pages (page tokens are long-lived/permanent)
-    let pages;
-    let pagesRaw: string;
-    try {
-      const result = await getUserPages(longUserToken);
-      pages = result.pages;
-      pagesRaw = result.raw;
-    } catch (err) {
-      console.error("Meta get pages failed:", err);
+    const pages = await getUserPages(longUserToken);
+
+    if (pages.length === 0) {
       return NextResponse.redirect(
-        `${origin}/accounts?error=get_pages_failed`
+        `${origin}/accounts?error=no_pages`
       );
     }
 
-    if (pages.length === 0) {
-      // Try older API versions as fallback
-      const versions = ["v19.0", "v20.0", "v21.0"];
-      let debugInfo = `v22=${pagesRaw}`;
-      for (const ver of versions) {
-        try {
-          const res = await fetch(
-            `https://graph.facebook.com/${ver}/me/accounts?access_token=${longUserToken}&fields=id,name,access_token`
-          );
-          const data = await res.text();
-          debugInfo += ` | ${ver}=${data}`;
-          const parsed = JSON.parse(data);
-          if (parsed.data && parsed.data.length > 0) {
-            // Found pages with older version! Use them.
-            pages = parsed.data;
-            pagesRaw = data;
-            break;
-          }
-        } catch { /* ignore */ }
-      }
-
-      // If still no pages, try with app token to get user's pages
-      if (pages.length === 0) {
-        try {
-          const appToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`;
-          const res = await fetch(
-            `https://graph.facebook.com/v22.0/122117846559217925/accounts?access_token=${longUserToken}`
-          );
-          const data = await res.text();
-          debugInfo += ` | user_id_accounts=${data}`;
-        } catch { /* ignore */ }
-      }
-
-      if (pages.length === 0) {
-        return NextResponse.redirect(
-          `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 800))}`
-        );
-      }
-    }
-
     // 4. For each page, save Facebook + detect and save Instagram
-    let igDebugRaw = "";
     for (const page of pages) {
       // Upsert Facebook account
       const { data: existingFb } = await supabase
@@ -162,19 +100,7 @@ export async function GET(request: Request) {
         .single();
 
       // Check for linked Instagram Business account
-      // Debug: log the raw response to see what Meta returns
-      let igDebugRaw = "";
-      try {
-        const igCheckRes = await fetch(
-          `https://graph.facebook.com/v22.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
-        );
-        igDebugRaw = await igCheckRes.text();
-      } catch { /* ignore */ }
       const igAccount = await getInstagramAccount(page.id, page.access_token);
-      // Store debug info in a temporary field for diagnosis
-      if (!igAccount) {
-        console.error(`Instagram debug for page ${page.id}: ${igDebugRaw}`);
-      }
 
       if (existingFb) {
         await supabase
@@ -243,9 +169,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.redirect(
-      `${origin}/accounts?success=meta_connected&ig_debug=${encodeURIComponent(igDebugRaw.slice(0, 300))}`
-    );
+    return NextResponse.redirect(`${origin}/accounts?success=meta_connected`);
   } catch (err) {
     console.error("Meta OAuth callback error:", err);
     const errMsg = err instanceof Error ? err.message : String(err);
