@@ -109,25 +109,26 @@ export async function GET(request: Request) {
     }
 
     if (pages.length === 0) {
-      // Debug: check what permissions the token actually has
-      let debugInfo = `pages=${pagesRaw}`;
+      // Debug: try with short token too, and check /me/accounts?fields=
+      let debugInfo = `long_token_pages=${pagesRaw}`;
       try {
-        const permRes = await fetch(
-          `https://graph.facebook.com/v22.0/me/permissions?access_token=${longUserToken}`
+        const shortPagesRes = await fetch(
+          `https://graph.facebook.com/v22.0/me/accounts?access_token=${shortToken}&fields=id,name,access_token`
         );
-        const permData = await permRes.text();
-        debugInfo += ` | perms=${permData}`;
+        const shortPagesData = await shortPagesRes.text();
+        debugInfo += ` | short_token_pages=${shortPagesData}`;
       } catch { /* ignore */ }
       try {
-        const meRes = await fetch(
-          `https://graph.facebook.com/v22.0/me?access_token=${longUserToken}`
+        // Try debug token to see scopes
+        const debugRes = await fetch(
+          `https://graph.facebook.com/v22.0/debug_token?input_token=${longUserToken}&access_token=${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
         );
-        const meData = await meRes.text();
-        debugInfo += ` | me=${meData}`;
+        const debugData = await debugRes.text();
+        debugInfo += ` | token_debug=${debugData}`;
       } catch { /* ignore */ }
 
       return NextResponse.redirect(
-        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 500))}`
+        `${origin}/accounts?error=no_pages&detail=${encodeURIComponent(debugInfo.slice(0, 800))}`
       );
     }
 
