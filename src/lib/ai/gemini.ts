@@ -1,5 +1,5 @@
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
 
 /**
  * Generate an image using Gemini's native image generation.
@@ -26,6 +26,7 @@ export async function generateImage(
         responseModalities: ["IMAGE", "TEXT"],
         imageConfig: {
           aspectRatio,
+          imageSize: "512",
         },
       },
     }),
