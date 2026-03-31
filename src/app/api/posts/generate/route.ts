@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { generateCaption } from "@/lib/ai/deepseek";
 import { generateImage, buildImagePrompt } from "@/lib/ai/gemini";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -119,7 +121,7 @@ export async function POST(request: Request) {
     let generatedImageUrl = sourceMediaUrl;
 
     if (!generatedImageUrl) {
-      const imagePrompt = buildImagePrompt({
+      const { prompt: imagePrompt, aspectRatio } = buildImagePrompt({
         caption,
         postTypeName: postType.name,
         postTypeSlug: postType.slug,
@@ -131,7 +133,7 @@ export async function POST(request: Request) {
         services: org?.services || null,
       });
 
-      const { base64, mimeType } = await generateImage(imagePrompt);
+      const { base64, mimeType } = await generateImage(imagePrompt, aspectRatio);
 
       // Upload to Supabase Storage
       const ext = mimeType.includes("png") ? "png" : "jpg";

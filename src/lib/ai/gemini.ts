@@ -4,8 +4,12 @@ const GEMINI_API_URL =
 /**
  * Generate an image using Gemini's native image generation.
  * Returns a base64 PNG image.
+ * @param aspectRatio - e.g. "1:1", "9:16", "16:9"
  */
-export async function generateImage(prompt: string): Promise<{
+export async function generateImage(
+  prompt: string,
+  aspectRatio: string = "1:1"
+): Promise<{
   base64: string;
   mimeType: string;
 }> {
@@ -20,6 +24,9 @@ export async function generateImage(prompt: string): Promise<{
       ],
       generationConfig: {
         responseModalities: ["IMAGE", "TEXT"],
+        imageConfig: {
+          aspectRatio,
+        },
       },
     }),
   });
@@ -54,6 +61,15 @@ export async function generateImage(prompt: string): Promise<{
 /**
  * Build an image generation prompt from post context.
  */
+const ASPECT_RATIOS: Record<string, string> = {
+  story: "9:16",
+  text_only: "1:1",
+  text_overlay: "1:1",
+  generated_visual: "1:1",
+  carousel: "1:1",
+  photo_edit: "4:5",
+};
+
 export function buildImagePrompt(context: {
   caption: string;
   postTypeName: string;
@@ -64,18 +80,19 @@ export function buildImagePrompt(context: {
   brandVoice: string | null;
   colorPalette: string[] | null;
   services: string[] | null;
-}): string {
+}): { prompt: string; aspectRatio: string } {
   const isStory = context.postTypeSlug === "story";
   const isTextOverlay = context.postTypeSlug === "text_overlay";
   const isCarousel = context.postTypeSlug === "carousel";
 
-  const aspectRatio = isStory ? "portrait 9:16 vertical" : "square 1:1";
+  const aspectRatio = ASPECT_RATIOS[context.postTypeSlug] || "1:1";
+  const aspectLabel = isStory ? "portrait 9:16 vertical" : `${aspectRatio}`;
 
   const parts = [
     `Create a professional, visually appealing social media image for "${context.orgName}".`,
     "",
     "Requirements:",
-    `- Eye-catching, suitable for Instagram/Facebook (${aspectRatio} ratio)`,
+    `- Eye-catching, suitable for Instagram/Facebook (${aspectLabel} ratio)`,
     "- Clean, modern aesthetic",
     "- Photorealistic or high-quality style",
   ];
@@ -115,5 +132,5 @@ export function buildImagePrompt(context: {
   parts.push("", `Post type: ${context.postTypeName}`);
   parts.push(`Post caption (for context): ${context.caption}`);
 
-  return parts.join("\n");
+  return { prompt: parts.join("\n"), aspectRatio };
 }
