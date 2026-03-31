@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   MessageCircle,
-  Send,
   Check,
   X,
   AlertCircle,
@@ -55,7 +54,6 @@ export default function CommentsPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [filter, setFilter] = useState("all");
   const [orgId, setOrgId] = useState<string | null>(null);
-  const [sending, setSending] = useState<string | null>(null);
   const [editingReply, setEditingReply] = useState<string | null>(null);
   const [editedText, setEditedText] = useState("");
   const [feedback, setFeedback] = useState<{
@@ -108,49 +106,6 @@ export default function CommentsPage() {
   useEffect(() => {
     loadComments();
   }, [loadComments]);
-
-  async function handleSendReply(comment: Comment, replyText: string) {
-    setSending(comment.id);
-    setFeedback(null);
-
-    try {
-      const res = await fetch("/api/meta/reply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          comment_id: comment.id,
-          reply_text: replyText,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setFeedback({
-          commentId: comment.id,
-          type: "error",
-          message: data.error || "Erreur lors de l'envoi",
-        });
-        return;
-      }
-
-      setFeedback({
-        commentId: comment.id,
-        type: "success",
-        message: "R\u00e9ponse envoy\u00e9e !",
-      });
-      setEditingReply(null);
-      loadComments();
-    } catch {
-      setFeedback({
-        commentId: comment.id,
-        type: "error",
-        message: "Erreur r\u00e9seau",
-      });
-    } finally {
-      setSending(null);
-    }
-  }
 
   async function handleCopyReply(comment: Comment, replyText: string) {
     try {
@@ -360,34 +315,17 @@ export default function CommentsPage() {
                     )}
 
                     <div className="flex gap-2 flex-wrap">
-                      {/* Send AI reply as-is */}
+                      {/* Copy AI reply */}
                       {comment.ai_reply && editingReply !== comment.id && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleSendReply(comment, comment.ai_reply!)
-                            }
-                            disabled={sending === comment.id}
-                          >
-                            {sending === comment.id ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4 mr-1" />
-                            )}
-                            Envoyer
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleCopyReply(comment, comment.ai_reply!)
-                            }
-                          >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Copier
-                          </Button>
-                        </>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            handleCopyReply(comment, comment.ai_reply!)
+                          }
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copier la r&eacute;ponse
+                        </Button>
                       )}
 
                       {/* Edit reply */}
@@ -408,29 +346,12 @@ export default function CommentsPage() {
                           <Button
                             size="sm"
                             onClick={() =>
-                              handleSendReply(comment, editedText)
-                            }
-                            disabled={
-                              sending === comment.id || !editedText.trim()
-                            }
-                          >
-                            {sending === comment.id ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4 mr-1" />
-                            )}
-                            Envoyer
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
                               handleCopyReply(comment, editedText)
                             }
                             disabled={!editedText.trim()}
                           >
                             <Copy className="h-4 w-4 mr-1" />
-                            Copier
+                            Copier la r&eacute;ponse
                           </Button>
                           <Button
                             size="sm"
