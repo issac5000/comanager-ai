@@ -76,6 +76,7 @@ export async function POST(request: Request) {
   }
 
   const results: { platform: string; success: boolean; error?: string }[] = [];
+  let metaPostId: string | null = null;
 
   // Publish to Facebook pages
   const fbAccounts = accounts.filter(
@@ -84,12 +85,14 @@ export async function POST(request: Request) {
 
   for (const fb of fbAccounts) {
     try {
-      await publishToFacebook(
+      const fbResult = await publishToFacebook(
         fb.page_id!,
         fb.access_token!,
         post.generated_image_url,
         caption
       );
+      // Store the Meta post ID so webhooks can link comments back
+      if (fbResult.id) metaPostId = fbResult.id;
       results.push({ platform: `facebook:${fb.page_name}`, success: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -108,12 +111,14 @@ export async function POST(request: Request) {
 
   for (const ig of igAccounts) {
     try {
-      await publishToInstagram(
+      const igResult = await publishToInstagram(
         ig.ig_user_id!,
         ig.access_token!,
         post.generated_image_url,
         caption
       );
+      // If no FB post ID yet, use the IG media ID
+      if (!metaPostId && igResult.id) metaPostId = igResult.id;
       results.push({ platform: `instagram:${ig.ig_username}`, success: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -125,7 +130,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // Update post status
+  // Update post status + store meta_post_id for webhook comment matching
   const anySuccess = results.some((r) => r.success);
   const allFailed = results.every((r) => !r.success);
 
@@ -135,6 +140,7 @@ export async function POST(request: Request) {
       .update({
         status: "published",
         published_at: new Date().toISOString(),
+        meta_post_id: metaPostId,
       })
       .eq("id", post_id);
   } else if (allFailed) {
