@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Copy,
 } from "lucide-react";
 
 type Comment = {
@@ -148,6 +149,34 @@ export default function CommentsPage() {
       });
     } finally {
       setSending(null);
+    }
+  }
+
+  async function handleCopyReply(comment: Comment, replyText: string) {
+    try {
+      await navigator.clipboard.writeText(replyText);
+      setFeedback({
+        commentId: comment.id,
+        type: "success",
+        message: "R\u00e9ponse copi\u00e9e ! Collez-la dans Instagram.",
+      });
+      // Mark as published since user will paste it manually
+      await supabase
+        .from("comments")
+        .update({
+          reply_status: "published",
+          ai_reply: replyText,
+          replied_at: new Date().toISOString(),
+        })
+        .eq("id", comment.id);
+      setEditingReply(null);
+      loadComments();
+    } catch {
+      setFeedback({
+        commentId: comment.id,
+        type: "error",
+        message: "Impossible de copier",
+      });
     }
   }
 
@@ -331,22 +360,34 @@ export default function CommentsPage() {
                     )}
 
                     <div className="flex gap-2 flex-wrap">
-                      {/* Send AI reply as-is */}
+                      {/* Send or Copy AI reply as-is */}
                       {comment.ai_reply && editingReply !== comment.id && (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            handleSendReply(comment, comment.ai_reply!)
-                          }
-                          disabled={sending === comment.id}
-                        >
-                          {sending === comment.id ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-1" />
-                          )}
-                          Envoyer
-                        </Button>
+                        comment.platform === "instagram" ? (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleCopyReply(comment, comment.ai_reply!)
+                            }
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copier la r&eacute;ponse
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleSendReply(comment, comment.ai_reply!)
+                            }
+                            disabled={sending === comment.id}
+                          >
+                            {sending === comment.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-1" />
+                            )}
+                            Envoyer
+                          </Button>
+                        )
                       )}
 
                       {/* Edit reply */}
@@ -364,22 +405,35 @@ export default function CommentsPage() {
                         </Button>
                       ) : (
                         <>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleSendReply(comment, editedText)
-                            }
-                            disabled={
-                              sending === comment.id || !editedText.trim()
-                            }
-                          >
-                            {sending === comment.id ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4 mr-1" />
-                            )}
-                            Envoyer
-                          </Button>
+                          {comment.platform === "instagram" ? (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleCopyReply(comment, editedText)
+                              }
+                              disabled={!editedText.trim()}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              Copier la r&eacute;ponse
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleSendReply(comment, editedText)
+                              }
+                              disabled={
+                                sending === comment.id || !editedText.trim()
+                              }
+                            >
+                              {sending === comment.id ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4 mr-1" />
+                              )}
+                              Envoyer
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
