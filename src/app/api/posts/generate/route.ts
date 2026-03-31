@@ -100,6 +100,7 @@ export async function POST(request: Request) {
     // 1. Generate caption + hashtags with DeepSeek
     const { caption, hashtags } = await generateCaption({
       postTypeName: postType.name,
+      postTypeSlug: postType.slug,
       postTypeDescription: postType.description,
       orgName: org?.name || "Mon entreprise",
       orgDescription: org?.description || null,
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
       const imagePrompt = buildImagePrompt({
         caption,
         postTypeName: postType.name,
+        postTypeSlug: postType.slug,
         orgName: org?.name || "Mon entreprise",
         orgDescription: org?.description || null,
         industryName: org?.industries?.name || org?.custom_industry || null,

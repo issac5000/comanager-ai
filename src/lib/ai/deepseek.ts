@@ -7,6 +7,7 @@ type CaptionResult = {
 
 export type GenerationContext = {
   postTypeName: string;
+  postTypeSlug: string;
   postTypeDescription: string | null;
   orgName: string;
   orgDescription: string | null;
@@ -27,19 +28,49 @@ export type GenerationContext = {
 export async function generateCaption(
   context: GenerationContext
 ): Promise<CaptionResult> {
+  const typeInstructions: Record<string, string> = {
+    text_only: `TYPE : Post texte (storytelling/conseil/témoignage)
+- Écris un texte long et engageant (3-6 phrases)
+- Raconte une histoire, partage un conseil expert ou un témoignage
+- Pas besoin de décrire une image, le texte EST le contenu
+- Ton conversationnel, comme si tu parlais directement à l'audience`,
+    text_overlay: `TYPE : Texte sur image (citation/promo)
+- Écris une COURTE accroche percutante (1-2 phrases max)
+- Le texte sera affiché SUR l'image, donc il doit être court et impactant
+- Pense : citation inspirante, offre promo, stat marquante, question rhétorique`,
+    generated_visual: `TYPE : Visuel généré (infographie/promo)
+- Écris une légende qui ACCOMPAGNE un visuel promotionnel ou informatif
+- 2-3 phrases qui expliquent ce que montre le visuel
+- Inclus un call-to-action clair`,
+    carousel: `TYPE : Carrousel (série d'images)
+- Écris une légende qui donne envie de SWIPER
+- Commence par un hook accrocheur ("Swipe pour découvrir...", "5 raisons de...")
+- 2-4 phrases, format liste ou progression logique`,
+    story: `TYPE : Story (contenu éphémère vertical)
+- Écris un texte TRÈS court (1-2 phrases max)
+- Langage décontracté, direct, urgent ("Maintenant", "Aujourd'hui", "Découvrez")
+- Privilégie les questions ou les CTA interactifs (sondage, quiz)`,
+    photo_edit: `TYPE : Photo éditée (photo client mise en scène)
+- Écris une légende qui met en valeur la PHOTO du client
+- 2-3 phrases, ton professionnel mais chaleureux
+- Mets l'accent sur le rendu visuel et le résultat`,
+  };
+
   const systemPrompt = `Tu es un expert en social media marketing. Tu génères des posts Instagram et Facebook pour des entreprises.
 
 Règles strictes :
 - Écris en français
-- La légende doit faire 1 à 4 phrases, engageante et authentique
 - Génère 5 à 10 hashtags pertinents (sans le #)
 - Ne mets PAS de hashtags dans la légende
 - 1-2 emojis max si pertinent, pas plus
-- Le contenu doit être spécifique à l'entreprise, pas générique
+- Le contenu doit être SPÉCIFIQUE à l'entreprise, pas générique
+- VARIE ton style : ne commence pas toujours de la même façon
 - Réponds UNIQUEMENT en JSON valide : {"caption": "...", "hashtags": ["...", "..."]}`;
 
+  const specificInstructions = typeInstructions[context.postTypeSlug];
+
   const parts: string[] = [
-    `Génère un post de type "${context.postTypeName}"${context.postTypeDescription ? ` (${context.postTypeDescription})` : ""}.`,
+    specificInstructions || `Génère un post de type "${context.postTypeName}"${context.postTypeDescription ? ` (${context.postTypeDescription})` : ""}.`,
     "",
     `Entreprise : ${context.orgName}`,
   ];

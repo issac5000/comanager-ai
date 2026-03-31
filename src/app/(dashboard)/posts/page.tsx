@@ -68,7 +68,7 @@ export default function PostsPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<PublishFeedback | null>(null);
   const [postTypes, setPostTypes] = useState<PostType[]>([]);
-  const [generating, setGenerating] = useState(false);
+  const [generatingType, setGeneratingType] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [expandedCaptions, setExpandedCaptions] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -144,7 +144,7 @@ export default function PostsPage() {
   }
 
   async function handleGenerate(postTypeId: string) {
-    setGenerating(true);
+    setGeneratingType(postTypeId);
     setGenerateError(null);
     try {
       const res = await fetch("/api/posts/generate", {
@@ -163,7 +163,7 @@ export default function PostsPage() {
     } catch {
       setGenerateError("Erreur r\u00e9seau. V\u00e9rifiez votre connexion.");
     } finally {
-      setGenerating(false);
+      setGeneratingType(null);
     }
   }
 
@@ -280,10 +280,10 @@ export default function PostsPage() {
                   key={pt.id}
                   size="sm"
                   variant="outline"
-                  disabled={generating}
+                  disabled={generatingType !== null}
                   onClick={() => handleGenerate(pt.id)}
                 >
-                  {generating ? (
+                  {generatingType === pt.id ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                   ) : (
                     <Sparkles className="h-4 w-4 mr-1" />
@@ -292,7 +292,7 @@ export default function PostsPage() {
                 </Button>
               ))}
             </div>
-            {generating && (
+            {generatingType && (
               <p className="text-xs text-muted-foreground">
                 G&eacute;n&eacute;ration en cours (caption + image)... Cela peut prendre 15-30s.
               </p>

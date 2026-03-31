@@ -57,6 +57,7 @@ export async function generateImage(prompt: string): Promise<{
 export function buildImagePrompt(context: {
   caption: string;
   postTypeName: string;
+  postTypeSlug: string;
   orgName: string;
   orgDescription: string | null;
   industryName: string | null;
@@ -64,15 +65,36 @@ export function buildImagePrompt(context: {
   colorPalette: string[] | null;
   services: string[] | null;
 }): string {
+  const isStory = context.postTypeSlug === "story";
+  const isTextOverlay = context.postTypeSlug === "text_overlay";
+  const isCarousel = context.postTypeSlug === "carousel";
+
+  const aspectRatio = isStory ? "portrait 9:16 vertical" : "square 1:1";
+
   const parts = [
     `Create a professional, visually appealing social media image for "${context.orgName}".`,
     "",
     "Requirements:",
-    "- Eye-catching, suitable for Instagram/Facebook (square 1:1 ratio)",
+    `- Eye-catching, suitable for Instagram/Facebook (${aspectRatio} ratio)`,
     "- Clean, modern aesthetic",
-    "- Do NOT include any text, watermarks, or logos",
     "- Photorealistic or high-quality style",
   ];
+
+  if (isTextOverlay) {
+    parts.push("- Include stylized text overlay with the key message from the caption");
+    parts.push("- Use bold, readable typography that stands out against the background");
+  } else {
+    parts.push("- Do NOT include any text, watermarks, or logos");
+  }
+
+  if (isStory) {
+    parts.push("- IMPORTANT: Generate a VERTICAL image (taller than wide, 9:16 portrait orientation)");
+    parts.push("- Dynamic, attention-grabbing composition suited for stories");
+  }
+
+  if (isCarousel) {
+    parts.push("- Create a single compelling hero image that introduces the carousel theme");
+  }
 
   if (context.orgDescription) {
     parts.push(`- The business is: ${context.orgDescription}`);
