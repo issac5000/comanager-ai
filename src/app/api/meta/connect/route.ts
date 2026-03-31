@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set("client_id", process.env.META_APP_ID!);
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", "pages_manage_posts,pages_read_engagement,pages_show_list,pages_manage_engagement,instagram_basic,instagram_content_publish");
+  authUrl.searchParams.set("scope", "pages_manage_posts,pages_show_list,pages_manage_engagement,instagram_basic,instagram_content_publish");
   authUrl.searchParams.set("state", state);
 
   return NextResponse.redirect(authUrl.toString());
