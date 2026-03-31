@@ -26,7 +26,7 @@ export async function generateImage(
         responseModalities: ["IMAGE", "TEXT"],
         imageConfig: {
           aspectRatio,
-          imageSize: "1024",
+          imageSize: "1K",
         },
       },
     }),
