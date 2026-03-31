@@ -360,19 +360,9 @@ export default function CommentsPage() {
                     )}
 
                     <div className="flex gap-2 flex-wrap">
-                      {/* Send or Copy AI reply as-is */}
+                      {/* Send AI reply as-is */}
                       {comment.ai_reply && editingReply !== comment.id && (
-                        comment.platform === "instagram" ? (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleCopyReply(comment, comment.ai_reply!)
-                            }
-                          >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Copier la r&eacute;ponse
-                          </Button>
-                        ) : (
+                        <>
                           <Button
                             size="sm"
                             onClick={() =>
@@ -387,7 +377,17 @@ export default function CommentsPage() {
                             )}
                             Envoyer
                           </Button>
-                        )
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleCopyReply(comment, comment.ai_reply!)
+                            }
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copier
+                          </Button>
+                        </>
                       )}
 
                       {/* Edit reply */}
@@ -405,35 +405,33 @@ export default function CommentsPage() {
                         </Button>
                       ) : (
                         <>
-                          {comment.platform === "instagram" ? (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleCopyReply(comment, editedText)
-                              }
-                              disabled={!editedText.trim()}
-                            >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Copier la r&eacute;ponse
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleSendReply(comment, editedText)
-                              }
-                              disabled={
-                                sending === comment.id || !editedText.trim()
-                              }
-                            >
-                              {sending === comment.id ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Send className="h-4 w-4 mr-1" />
-                              )}
-                              Envoyer
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleSendReply(comment, editedText)
+                            }
+                            disabled={
+                              sending === comment.id || !editedText.trim()
+                            }
+                          >
+                            {sending === comment.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-1" />
+                            )}
+                            Envoyer
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleCopyReply(comment, editedText)
+                            }
+                            disabled={!editedText.trim()}
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copier
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
