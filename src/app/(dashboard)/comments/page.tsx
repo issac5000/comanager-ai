@@ -15,6 +15,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  RefreshCw,
 } from "lucide-react";
 
 type Comment = {
@@ -61,6 +62,8 @@ export default function CommentsPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState<string | null>(null);
   const supabase = createClient();
 
   const loadComments = useCallback(async () => {
@@ -164,13 +167,50 @@ export default function CommentsPage() {
     loadComments();
   }
 
+  async function handleFetchComments() {
+    setFetching(true);
+    setFetchResult(null);
+    try {
+      const res = await fetch("/api/meta/fetch-comments", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setFetchResult(data.error || "Erreur");
+      } else if (data.new_comments === 0) {
+        setFetchResult("Aucun nouveau commentaire");
+      } else {
+        setFetchResult(`${data.new_comments} nouveau(x) commentaire(s) !`);
+        loadComments();
+      }
+    } catch {
+      setFetchResult("Erreur r\u00e9seau");
+    } finally {
+      setFetching(false);
+      setTimeout(() => setFetchResult(null), 4000);
+    }
+  }
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Commentaires</h1>
-        <p className="text-muted-foreground">
-          G&eacute;rez les commentaires et les r&eacute;ponses g&eacute;n&eacute;r&eacute;es par l&apos;IA
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Commentaires</h1>
+          <p className="text-muted-foreground">
+            G&eacute;rez les commentaires et les r&eacute;ponses g&eacute;n&eacute;r&eacute;es par l&apos;IA
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <Button size="sm" variant="outline" onClick={handleFetchComments} disabled={fetching}>
+            {fetching ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1" />
+            )}
+            {fetching ? "Recherche..." : "Rafra\u00eechir"}
+          </Button>
+          {fetchResult && (
+            <span className="text-xs text-muted-foreground">{fetchResult}</span>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
