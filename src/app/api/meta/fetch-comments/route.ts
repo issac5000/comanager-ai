@@ -4,11 +4,30 @@ import { generateCommentReply } from "@/lib/ai/deepseek";
 
 const META_BASE_URL = "https://graph.facebook.com/v22.0";
 
-type MetaComment = {
+type FBComment = {
   id: string;
   message: string;
   from?: { id: string; name: string };
   created_time?: string;
+};
+
+type FBPost = {
+  id: string;
+  message?: string;
+  comments?: { data: FBComment[] };
+};
+
+type IGComment = {
+  id: string;
+  text: string;
+  from?: { id: string; username: string };
+  timestamp?: string;
+};
+
+type IGMedia = {
+  id: string;
+  caption?: string;
+  comments?: { data: IGComment[] };
 };
 
 export async function POST() {
@@ -32,28 +51,19 @@ export async function POST() {
     return NextResponse.json({ error: "Aucune organisation" }, { status: 400 });
   }
 
-  // Get published posts that have a meta_post_id
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("id, caption, meta_post_id")
-    .eq("org_id", membership.org_id)
-    .eq("status", "published")
-    .not("meta_post_id", "is", null);
+  // Get all connected accounts
+  const { data: accounts } = await supabase
+    .from("connected_accounts")
+    .select("access_token, page_id, ig_user_id, platform")
+    .eq("org_id", membership.org_id);
 
-  if (!posts || posts.length === 0) {
-    return NextResponse.json({ new_comments: 0, message: "Aucun post publié avec ID Meta" });
+  if (!accounts || accounts.length === 0) {
+    return NextResponse.json({ error: "Aucun compte connecté" }, { status: 400 });
   }
 
-  // Get page access token
-  const { data: account } = await supabase
-    .from("connected_accounts")
-    .select("access_token, page_id")
-    .eq("org_id", membership.org_id)
-    .eq("platform", "facebook")
-    .limit(1)
-    .single();
-
-  if (!account?.access_token) {
+  // Get the Facebook account (has the page token)
+  const fbAccount = accounts.find((a) => a.platform === "facebook");
+  if (!fbAccount?.access_token) {
     return NextResponse.json({ error: "Aucun compte Facebook connecté" }, { status: 400 });
   }
 
@@ -76,75 +86,163 @@ export async function POST() {
 
   let totalNew = 0;
 
-  for (const post of posts) {
-    if (!post.meta_post_id) continue;
+  // --- FACEBOOK: Fetch page feed with comments ---
+  try {
+    const fbUrl = new URL(`${META_BASE_URL}/${fbAccount.page_id}/feed`);
+    fbUrl.searchParams.set(
+      "fields",
+      "id,message,comments.limit(50){id,message,from,created_time}"
+    );
+    fbUrl.searchParams.set("limit", "25");
+    fbUrl.searchParams.set("access_token", fbAccount.access_token);
 
-    // Fetch comments from Meta
-    const url = new URL(`${META_BASE_URL}/${post.meta_post_id}/comments`);
-    url.searchParams.set("fields", "id,message,from,created_time");
-    url.searchParams.set("access_token", account.access_token);
-    url.searchParams.set("limit", "50");
+    const fbRes = await fetch(fbUrl.toString());
+    if (fbRes.ok) {
+      const fbData = await fbRes.json();
+      const fbPosts = (fbData.data || []) as FBPost[];
 
-    const res = await fetch(url.toString());
-    if (!res.ok) continue;
+      for (const post of fbPosts) {
+        const comments = post.comments?.data || [];
+        for (const comment of comments) {
+          if (!comment.id || !comment.message) continue;
 
-    const data = await res.json();
-    const comments = (data.data || []) as MetaComment[];
+          // Skip if already processed
+          const { data: existing } = await supabase
+            .from("comments")
+            .select("id")
+            .eq("meta_comment_id", comment.id)
+            .limit(1)
+            .single();
 
-    for (const comment of comments) {
-      if (!comment.id || !comment.message) continue;
+          if (existing) continue;
 
-      // Skip if already processed
-      const { data: existing } = await supabase
-        .from("comments")
-        .select("id")
-        .eq("meta_comment_id", comment.id)
-        .limit(1)
-        .single();
+          // Skip comments from our own page
+          if (comment.from?.id === fbAccount.page_id) continue;
 
-      if (existing) continue;
+          // Generate AI reply
+          let aiReply: string | null = null;
+          let replyStatus = "pending_review";
+          try {
+            aiReply = await generateCommentReply({
+              commentText: comment.message,
+              postCaption: post.message || null,
+              orgName: org?.name || "Mon entreprise",
+              orgDescription: org?.description || null,
+              brandVoice: org?.brand_voice || null,
+              industryName,
+              commenterName: comment.from?.name || null,
+            });
 
-      // Skip comments from our own page
-      if (comment.from?.id === account.page_id) continue;
+            if (aiReply.trim().toUpperCase() === "IGNORE") {
+              replyStatus = "ignored";
+              aiReply = null;
+            }
+          } catch (err) {
+            console.error("AI reply generation failed:", err);
+          }
 
-      // Generate AI reply
-      let aiReply: string | null = null;
-      let replyStatus = "pending_review";
-      try {
-        aiReply = await generateCommentReply({
-          commentText: comment.message,
-          postCaption: post.caption,
-          orgName: org?.name || "Mon entreprise",
-          orgDescription: org?.description || null,
-          brandVoice: org?.brand_voice || null,
-          industryName,
-          commenterName: comment.from?.name || null,
-        });
+          await supabase.from("comments").insert({
+            org_id: membership.org_id,
+            meta_comment_id: comment.id,
+            meta_post_id: post.id,
+            platform: "facebook",
+            commenter_name: comment.from?.name || null,
+            commenter_id: comment.from?.id || null,
+            comment_text: comment.message,
+            ai_reply: aiReply,
+            reply_status: replyStatus,
+            page_id: fbAccount.page_id,
+          });
 
-        if (aiReply.trim().toUpperCase() === "IGNORE") {
-          replyStatus = "ignored";
-          aiReply = null;
+          totalNew++;
         }
-      } catch (err) {
-        console.error("AI reply generation failed:", err);
       }
+    } else {
+      const errBody = await fbRes.json().catch(() => ({}));
+      console.error("Facebook feed fetch failed:", fbRes.status, errBody);
+    }
+  } catch (err) {
+    console.error("Facebook fetch error:", err);
+  }
 
-      // Store
-      await supabase.from("comments").insert({
-        org_id: membership.org_id,
-        post_id: post.id,
-        meta_comment_id: comment.id,
-        meta_post_id: post.meta_post_id,
-        platform: "facebook",
-        commenter_name: comment.from?.name || null,
-        commenter_id: comment.from?.id || null,
-        comment_text: comment.message,
-        ai_reply: aiReply,
-        reply_status: replyStatus,
-        page_id: account.page_id,
-      });
+  // --- INSTAGRAM: Fetch media with comments ---
+  if (fbAccount.ig_user_id) {
+    try {
+      const igUrl = new URL(`${META_BASE_URL}/${fbAccount.ig_user_id}/media`);
+      igUrl.searchParams.set(
+        "fields",
+        "id,caption,comments{id,text,from,timestamp}"
+      );
+      igUrl.searchParams.set("limit", "25");
+      igUrl.searchParams.set("access_token", fbAccount.access_token);
 
-      totalNew++;
+      const igRes = await fetch(igUrl.toString());
+      if (igRes.ok) {
+        const igData = await igRes.json();
+        const igMedias = (igData.data || []) as IGMedia[];
+
+        for (const media of igMedias) {
+          const comments = media.comments?.data || [];
+          for (const comment of comments) {
+            if (!comment.id || !comment.text) continue;
+
+            // Skip if already processed
+            const { data: existing } = await supabase
+              .from("comments")
+              .select("id")
+              .eq("meta_comment_id", comment.id)
+              .limit(1)
+              .single();
+
+            if (existing) continue;
+
+            // Skip comments from our own IG account
+            if (comment.from?.id === fbAccount.ig_user_id) continue;
+
+            // Generate AI reply
+            let aiReply: string | null = null;
+            let replyStatus = "pending_review";
+            try {
+              aiReply = await generateCommentReply({
+                commentText: comment.text,
+                postCaption: media.caption || null,
+                orgName: org?.name || "Mon entreprise",
+                orgDescription: org?.description || null,
+                brandVoice: org?.brand_voice || null,
+                industryName,
+                commenterName: comment.from?.username || null,
+              });
+
+              if (aiReply.trim().toUpperCase() === "IGNORE") {
+                replyStatus = "ignored";
+                aiReply = null;
+              }
+            } catch (err) {
+              console.error("AI reply generation failed:", err);
+            }
+
+            await supabase.from("comments").insert({
+              org_id: membership.org_id,
+              meta_comment_id: comment.id,
+              meta_post_id: media.id,
+              platform: "instagram",
+              commenter_name: comment.from?.username || null,
+              commenter_id: comment.from?.id || null,
+              comment_text: comment.text,
+              ai_reply: aiReply,
+              reply_status: replyStatus,
+              page_id: fbAccount.page_id,
+            });
+
+            totalNew++;
+          }
+        }
+      } else {
+        const errBody = await igRes.json().catch(() => ({}));
+        console.error("Instagram media fetch failed:", igRes.status, errBody);
+      }
+    } catch (err) {
+      console.error("Instagram fetch error:", err);
     }
   }
 
