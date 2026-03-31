@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       async function generateAndUpload(prompt: string, ar: string): Promise<string> {
         const { base64, mimeType } = await generateImage(prompt, ar);
         const ext = mimeType.includes("png") ? "png" : "jpg";
-        const storagePath = `${membership.org_id}/generated/${crypto.randomUUID()}.${ext}`;
+        const storagePath = `${membership!.org_id}/generated/${crypto.randomUUID()}.${ext}`;
         const buffer = Buffer.from(base64, "base64");
         const { error: uploadError } = await supabase.storage
           .from("media")
