@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw, Sparkles, Loader2, X } from "lucide-react";
+import { FileText, Send, Copy, Download, Check, AlertCircle, RefreshCw, Sparkles, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 type PublishResult = {
   platform: string;
@@ -36,6 +36,7 @@ type Post = {
   published_at: string | null;
   created_at: string | null;
   generated_image_url: string | null;
+  generated_images: string[] | null;
   post_types: { name: string; slug: string } | null;
 };
 
@@ -72,6 +73,7 @@ export default function PostsPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [expandedCaptions, setExpandedCaptions] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
   const supabase = createClient();
 
   const loadPosts = useCallback(async () => {
@@ -329,7 +331,57 @@ export default function PostsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
             <Card key={post.id}>
-              {post.generated_image_url && (
+              {post.generated_images && post.generated_images.length > 1 ? (
+                <div className="relative">
+                  <div
+                    className="aspect-square overflow-hidden rounded-t-lg cursor-pointer"
+                    onClick={() => setLightboxUrl(post.generated_images![carouselIndex[post.id] || 0])}
+                  >
+                    <img
+                      src={post.generated_images[carouselIndex[post.id] || 0]}
+                      alt={`Slide ${(carouselIndex[post.id] || 0) + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <button
+                    className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+                    onClick={() =>
+                      setCarouselIndex((prev) => ({
+                        ...prev,
+                        [post.id]:
+                          ((prev[post.id] || 0) - 1 + post.generated_images!.length) %
+                          post.generated_images!.length,
+                      }))
+                    }
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+                    onClick={() =>
+                      setCarouselIndex((prev) => ({
+                        ...prev,
+                        [post.id]:
+                          ((prev[post.id] || 0) + 1) % post.generated_images!.length,
+                      }))
+                    }
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                    {post.generated_images.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          (carouselIndex[post.id] || 0) === i
+                            ? "bg-white"
+                            : "bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : post.generated_image_url ? (
                 <div
                   className="aspect-square overflow-hidden rounded-t-lg cursor-pointer"
                   onClick={() => setLightboxUrl(post.generated_image_url)}
@@ -340,7 +392,7 @@ export default function PostsPage() {
                     className="h-full w-full object-cover hover:scale-105 transition-transform duration-200"
                   />
                 </div>
-              )}
+              ) : null}
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium">

@@ -117,41 +117,60 @@ export async function POST(request: Request) {
       topicsExclude: org?.topics_exclude || null,
     });
 
-    // 2. Generate image with Gemini (or use source media)
-    let generatedImageUrl = sourceMediaUrl;
+    // 2. Generate image(s) with Gemini (or use source media)
+    const isCarousel = postType.slug === "carousel";
+    const isTextOnly = postType.slug === "text_only";
+    let generatedImageUrl: string | null = sourceMediaUrl;
+    let generatedImages: string[] = [];
 
-    if (!generatedImageUrl) {
-      const { prompt: imagePrompt, aspectRatio } = buildImagePrompt({
-        caption,
-        postTypeName: postType.name,
-        postTypeSlug: postType.slug,
-        orgName: org?.name || "Mon entreprise",
-        orgDescription: org?.description || null,
-        industryName: org?.industries?.name || org?.custom_industry || null,
-        brandVoice: org?.brand_voice || null,
-        colorPalette: org?.color_palette || null,
-        services: org?.services || null,
-      });
+    const imageContext = {
+      caption,
+      postTypeName: postType.name,
+      postTypeSlug: postType.slug,
+      orgName: org?.name || "Mon entreprise",
+      orgDescription: org?.description || null,
+      industryName: org?.industries?.name || org?.custom_industry || null,
+      brandVoice: org?.brand_voice || null,
+      colorPalette: org?.color_palette || null,
+      services: org?.services || null,
+    };
 
-      const { base64, mimeType } = await generateImage(imagePrompt, aspectRatio);
+    if (!generatedImageUrl && !isTextOnly) {
+      const { prompt: basePrompt, aspectRatio } = buildImagePrompt(imageContext);
 
-      // Upload to Supabase Storage
-      const ext = mimeType.includes("png") ? "png" : "jpg";
-      const storagePath = `${membership.org_id}/generated/${crypto.randomUUID()}.${ext}`;
-
-      const buffer = Buffer.from(base64, "base64");
-      const { error: uploadError } = await supabase.storage
-        .from("media")
-        .upload(storagePath, buffer, { contentType: mimeType });
-
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
+      // Helper to generate one image and upload it
+      async function generateAndUpload(prompt: string, ar: string): Promise<string> {
+        const { base64, mimeType } = await generateImage(prompt, ar);
+        const ext = mimeType.includes("png") ? "png" : "jpg";
+        const storagePath = `${membership.org_id}/generated/${crypto.randomUUID()}.${ext}`;
+        const buffer = Buffer.from(base64, "base64");
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(storagePath, buffer, { contentType: mimeType });
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+        const { data: urlData } = supabase.storage
+          .from("media")
+          .getPublicUrl(storagePath);
+        return urlData.publicUrl;
       }
 
-      const { data: urlData } = supabase.storage
-        .from("media")
-        .getPublicUrl(storagePath);
-      generatedImageUrl = urlData.publicUrl;
+      if (isCarousel) {
+        // Generate multiple images in parallel with varied prompts
+        const slideVariations = [
+          `${basePrompt}\n\nThis is SLIDE 1 of a carousel: the eye-catching intro/hook image.`,
+          `${basePrompt}\n\nThis is SLIDE 2 of a carousel: show a different angle or detail.`,
+          `${basePrompt}\n\nThis is SLIDE 3 of a carousel: highlight a key benefit or feature.`,
+          `${basePrompt}\n\nThis is SLIDE 4 of a carousel: the closing/call-to-action image.`,
+        ];
+
+        const results = await Promise.all(
+          slideVariations.map((prompt) => generateAndUpload(prompt, aspectRatio))
+        );
+        generatedImages = results;
+        generatedImageUrl = results[0]; // First image as thumbnail
+      } else {
+        generatedImageUrl = await generateAndUpload(basePrompt, aspectRatio);
+      }
     }
 
     // 3. Create the post
@@ -163,6 +182,7 @@ export async function POST(request: Request) {
         caption,
         hashtags,
         generated_image_url: generatedImageUrl,
+        generated_images: generatedImages.length > 0 ? generatedImages : [],
         platforms: ["facebook", "instagram"],
         status: "pending_review",
         source_media_id: source_media_id || null,
