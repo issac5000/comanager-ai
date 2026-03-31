@@ -126,5 +126,128 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* ═══════════════════════════════════════════════
+   Landing Page — Animations & Decorative Styles
+   ═══════════════════════════════════════════════ */
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(18px, -22px) scale(1.02);
+  }
+  66% {
+    transform: translate(-14px, 12px) scale(0.98);
+  }
+}
+
+@keyframes landing-float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-22px, 16px) scale(1.03);
+  }
+  66% {
+    transform: translate(16px, -12px) scale(0.97);
+  }
+}
+
+@keyframes landing-float-card {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes landing-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Hero entrance animation */
+.hero-animate {
+  animation: landing-fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-stagger-1 { animation-delay: 120ms; }
+.hero-stagger-2 { animation-delay: 240ms; }
+.hero-stagger-3 { animation-delay: 380ms; }
+.hero-stagger-4 { animation-delay: 520ms; }
+.hero-stagger-5 { animation-delay: 700ms; }
+
+/* Gradient orbs — warm palette on light background */
+.landing-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.landing-orb--orange {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.18), transparent 70%);
+  top: 2%;
+  left: -6%;
+  animation: landing-float 20s ease-in-out infinite;
+}
+
+.landing-orb--rose {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.12), transparent 70%);
+  top: 18%;
+  right: -4%;
+  animation: landing-float-reverse 24s ease-in-out infinite;
+}
+
+.landing-orb--blue {
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%);
+  bottom: 10%;
+  left: 30%;
+  animation: landing-float 18s ease-in-out infinite 3s;
+}
+
+/* Floating stat cards */
+.landing-float-card {
+  animation: landing-float-card 5s ease-in-out infinite;
+}
+
+.landing-float-card-delayed {
+  animation: landing-float-card 6s ease-in-out infinite 1.5s;
+}
+
+.landing-float-card-slow {
+  animation: landing-float-card 7s ease-in-out infinite 0.8s;
+}
+
+/* Serif display font utility */
+.font-display {
+  font-family: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
 }
