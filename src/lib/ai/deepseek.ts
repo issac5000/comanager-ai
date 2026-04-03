@@ -50,6 +50,11 @@ export async function generateCaption(
 - Écris un texte TRÈS court (1-2 phrases max)
 - Langage décontracté, direct, urgent ("Maintenant", "Aujourd'hui", "Découvrez")
 - Privilégie les questions ou les CTA interactifs (sondage, quiz)`,
+    story_text_overlay: `TYPE : Story - Texte sur image (story verticale avec texte incrusté)
+- Écris un texte ULTRA court (5-10 mots max) qui sera affiché SUR l'image en story
+- Le texte doit être percutant et lisible en un coup d'œil : accroche, promo flash, question choc
+- Pense format vertical 9:16, le texte sera gros et centré
+- Langage direct, urgent, impactant ("Offre flash", "Nouveau !", "Devinez quoi ?")`,
     photo_edit: `TYPE : Photo éditée (photo client mise en scène)
 - Écris une légende qui met en valeur la PHOTO du client
 - 2-3 phrases, ton professionnel mais chaleureux

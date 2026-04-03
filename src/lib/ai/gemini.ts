@@ -64,6 +64,7 @@ export async function generateImage(
  */
 const ASPECT_RATIOS: Record<string, string> = {
   story: "9:16",
+  story_text_overlay: "9:16",
   text_only: "1:1",
   text_overlay: "1:1",
   generated_visual: "1:1",
@@ -82,8 +83,8 @@ export function buildImagePrompt(context: {
   colorPalette: string[] | null;
   services: string[] | null;
 }): { prompt: string; aspectRatio: string } {
-  const isStory = context.postTypeSlug === "story";
-  const isTextOverlay = context.postTypeSlug === "text_overlay";
+  const isStory = context.postTypeSlug === "story" || context.postTypeSlug === "story_text_overlay";
+  const isTextOverlay = context.postTypeSlug === "text_overlay" || context.postTypeSlug === "story_text_overlay";
   const isCarousel = context.postTypeSlug === "carousel";
 
   const aspectRatio = ASPECT_RATIOS[context.postTypeSlug] || "1:1";
